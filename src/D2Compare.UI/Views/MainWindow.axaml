@@ -1,0 +1,176 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:D2Compare.ViewModels"
+        xmlns:controls="using:D2Compare.Controls"
+        xmlns:ti="using:TablerIcons"
+        x:Class="D2Compare.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding AppVersion, StringFormat='D2Compare v{0}'}"
+        MinWidth="1000" MinHeight="680"
+        Icon="/Assets/compare_yRb_icon.ico"
+        Background="{DynamicResource WindowBackgroundBrush}">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Theme Toggle (top-right) -->
+        <Button Grid.Row="0" Command="{Binding ToggleThemeCommand}"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="Transparent" BorderThickness="0"
+                Padding="8" Margin="0,4,4,0">
+            <Panel>
+                <ti:TablerIcon Icon="IconSunFilled" Width="22" Height="22" StrokeWidth="1.5"
+                               Brush="{DynamicResource IconForegroundBrush}"
+                               IsVisible="{Binding !IsDarkMode}" />
+                <ti:TablerIcon Icon="IconMoonFilled" Width="22" Height="22" StrokeWidth="1.5"
+                               Brush="{DynamicResource IconForegroundBrush}"
+                               IsVisible="{Binding IsDarkMode}" />
+            </Panel>
+        </Button>
+
+        <!-- Top Control Area -->
+        <Grid Grid.Row="0" Margin="10,10,46,10" ColumnDefinitions="*,Auto">
+
+            <!-- Left: Version/File Selection -->
+            <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,20,0">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <ti:TablerIcon Icon="IconFileExport" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                        <TextBlock Text="Source" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SourceVersions}"
+                              SelectedIndex="{Binding SelectedSourceIndex}" HorizontalAlignment="Stretch" />
+                    <Button Grid.Row="0" Grid.Column="2" Command="{Binding BrowseSourceCustomCommand}"
+                            IsVisible="{Binding IsSourceCustom}" Padding="6,4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon Icon="IconFolderOpen" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <TextBlock Text="Browse" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <ti:TablerIcon Icon="IconFileImport" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                        <TextBlock Text="Target" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TargetVersions}"
+                              SelectedIndex="{Binding SelectedTargetIndex}" HorizontalAlignment="Stretch" />
+                    <Button Grid.Row="1" Grid.Column="2" Command="{Binding BrowseTargetCustomCommand}"
+                            IsVisible="{Binding IsTargetCustom}" Padding="6,4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon Icon="IconFolderOpen" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <TextBlock Text="Browse" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <ti:TablerIcon Icon="IconFileText" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                        <TextBlock Text="File" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding FileList}"
+                              SelectedIndex="{Binding SelectedFileIndex}" HorizontalAlignment="Stretch" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding OpenSourceFileCommand}" Padding="8,4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon Icon="IconFileExport" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <TextBlock Text="Open Source File" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding OpenTargetFileCommand}" Padding="8,4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon Icon="IconFileImport" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <TextBlock Text="Open Target File" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding BatchLoadCommand}" Padding="8,4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon Icon="IconListSearch" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <TextBlock Text="Display All" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <CheckBox Content="Omit unchanged files" IsChecked="{Binding OmitUnchangedFiles}"
+                              VerticalAlignment="Center" />
+                </StackPanel>
+
+                <CheckBox Content="Include new rows in value breakdown (slower)"
+                          IsChecked="{Binding IncludeNewRows}" />
+            </StackPanel>
+
+            <!-- Right: File Summary -->
+            <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                    Padding="8" MinWidth="280" MaxHeight="220">
+                <controls:FormattedTextPresenter Document="{Binding FilesDocument}" FontSize="11"
+                                                 FontFamily="{StaticResource MonoFont}" />
+            </Border>
+
+        </Grid>
+
+        <!-- Main Content: Three Panels -->
+        <Grid x:Name="PanelsGrid" Grid.Row="1" Margin="10,0,10,10" ColumnDefinitions="*,Auto,*,Auto,1.5*" RowDefinitions="Auto,*">
+            <!-- Column Headers -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Columns Altered" FontWeight="Bold"
+                       Margin="0,0,0,4" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Rows Altered" FontWeight="Bold"
+                       Margin="0,0,0,4" />
+            <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                <TextBlock Text="Values" FontWeight="Bold" VerticalAlignment="Center" />
+                <TextBox Watermark="Search Term(s)" Width="160"
+                         Text="{Binding SearchText}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding MatchLabel}" VerticalAlignment="Center" MinWidth="80" />
+                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="Gray" />
+            </StackPanel>
+
+            <!-- Columns Panel -->
+            <Border Grid.Row="1" Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                <controls:FormattedTextPresenter Document="{Binding ColumnsDocument}"
+                                                 SearchTerm="{Binding ActiveSearchTerm}"
+                                                 Padding="6" FontSize="12"
+                                                 FontFamily="{StaticResource MonoFont}" />
+            </Border>
+
+            <!-- Splitter 1 -->
+            <GridSplitter Grid.Row="1" Grid.Column="1" Width="6" ResizeDirection="Columns"
+                          Background="Transparent" />
+
+            <!-- Rows Panel -->
+            <Border Grid.Row="1" Grid.Column="2" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                <controls:FormattedTextPresenter Document="{Binding RowsDocument}"
+                                                 SearchTerm="{Binding ActiveSearchTerm}"
+                                                 Padding="6" FontSize="12"
+                                                 FontFamily="{StaticResource MonoFont}" />
+            </Border>
+
+            <!-- Splitter 2 -->
+            <GridSplitter Grid.Row="1" Grid.Column="3" Width="6" ResizeDirection="Columns"
+                          Background="Transparent" />
+
+            <!-- Values Panel -->
+            <Border Grid.Row="1" Grid.Column="4" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                <controls:FormattedTextPresenter Document="{Binding ValuesDocument}"
+                                                 SearchTerm="{Binding ActiveSearchTerm}"
+                                                 Padding="6" FontSize="12"
+                                                 FontFamily="{StaticResource MonoFont}" />
+            </Border>
+
+            <!-- Loading Overlay -->
+            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5"
+                    Background="#80000000" CornerRadius="4"
+                    IsVisible="{Binding IsLoading}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock Text="{Binding StatusText}" Foreground="White"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+        <!-- Attribution -->
+        <Button Grid.Row="2" Command="{Binding OpenOriginalProjectCommand}"
+                Background="Transparent" BorderThickness="0"
+                HorizontalAlignment="Right" Padding="4,2" Margin="0,0,8,4">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <ti:TablerIcon Icon="IconBrandGithubFilled" Width="14" Height="14" StrokeWidth="1.5"
+                               Brush="{DynamicResource IconForegroundBrush}" />
+                <TextBlock Text="Original by locbones" FontSize="11" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </Grid>
+</Window>

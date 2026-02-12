@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/D2Compare.Core/D2Compare.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/D2Compare.UI/">
+    <Project Path="src/D2Compare.UI/D2Compare.csproj" />
+  </Folder>
+</Solution>
