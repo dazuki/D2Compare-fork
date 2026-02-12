@@ -1,6 +1,6 @@
 > **Note:** This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare). The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and upgraded from .NET 7 to .NET 8 (LTS).
 > 
-> This fork was developed with the assistance of [Claude Code](https://claude.ai/code).
+> This fork was developed by dazuki with the assistance of [Claude Code](https://claude.ai/code).
 > 
 > ## Requirements
 > 
@@ -10,7 +10,7 @@
 
 ---
 
-# D2Compare
+# D2Compare (README.md from locbones/D2Compare)
 This program was made to assist modders in comparing (and eventually converting) .TXT files between varying datasets.
 It will allow you to compare between different retail versions of both legacy and resurrected; or use your own files.
 At this time, the program makes no changes to any files and should be considered completely safe to use in your workflow.

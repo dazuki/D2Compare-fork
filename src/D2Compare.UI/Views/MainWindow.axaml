@@ -84,7 +84,7 @@
                     </Button>
                     <Button Command="{Binding BatchLoadCommand}" Padding="8,4">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <ti:TablerIcon Icon="IconListSearch" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
+                            <ti:TablerIcon Icon="IconFiles" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
                             <TextBlock Text="Display All" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -97,7 +97,7 @@
             </StackPanel>
 
             <!-- Right: File Summary -->
-            <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+            <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1"
                     Padding="8" MinWidth="280" MaxHeight="220">
                 <controls:FormattedTextPresenter Document="{Binding FilesDocument}" FontSize="11"
                                                  FontFamily="{StaticResource MonoFont}" />
@@ -121,7 +121,7 @@
             </StackPanel>
 
             <!-- Columns Panel -->
-            <Border Grid.Row="1" Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Row="1" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
                 <controls:FormattedTextPresenter Document="{Binding ColumnsDocument}"
                                                  SearchTerm="{Binding ActiveSearchTerm}"
                                                  Padding="6" FontSize="12"
@@ -133,7 +133,7 @@
                           Background="Transparent" />
 
             <!-- Rows Panel -->
-            <Border Grid.Row="1" Grid.Column="2" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Row="1" Grid.Column="2" BorderBrush="Gray" BorderThickness="1">
                 <controls:FormattedTextPresenter Document="{Binding RowsDocument}"
                                                  SearchTerm="{Binding ActiveSearchTerm}"
                                                  Padding="6" FontSize="12"
@@ -145,7 +145,7 @@
                           Background="Transparent" />
 
             <!-- Values Panel -->
-            <Border Grid.Row="1" Grid.Column="4" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Row="1" Grid.Column="4" BorderBrush="Gray" BorderThickness="1">
                 <controls:FormattedTextPresenter Document="{Binding ValuesDocument}"
                                                  SearchTerm="{Binding ActiveSearchTerm}"
                                                  Padding="6" FontSize="12"
@@ -154,7 +154,7 @@
 
             <!-- Loading Overlay -->
             <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5"
-                    Background="#80000000" CornerRadius="4"
+                    Background="#80000000"
                     IsVisible="{Binding IsLoading}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                     <TextBlock Text="{Binding StatusText}" Foreground="White"

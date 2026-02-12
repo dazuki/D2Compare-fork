@@ -15,7 +15,7 @@ public static class FormattedTextBuilder
         if (isBatchMode)
             lines.Add(hasChanges ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName));
 
-        var pad = isBatchMode ? "   " : "";
+        var pad = isBatchMode ? " " : "";
 
         foreach (var changed in result.ChangedColumns)
             lines.Add(Line(Span(pad + "Changed: ", SpanColor.Header, SpanStyle.Bold), Span(changed, SpanColor.Default)));
@@ -37,7 +37,7 @@ public static class FormattedTextBuilder
         if (isBatchMode)
             lines.Add(hasChanges ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName));
 
-        var pad = isBatchMode ? "   " : "";
+        var pad = isBatchMode ? " " : "";
 
         foreach (var changed in result.ChangedRows)
             lines.Add(Line(Span(pad + "Changed: ", SpanColor.Header, SpanStyle.Bold), Span(changed, SpanColor.Default)));
@@ -61,7 +61,7 @@ public static class FormattedTextBuilder
         if (result.GroupedDifferences.Count == 0)
             return new FormattedDocument(lines);
 
-        var pad = isBatchMode ? "   " : "";
+        var pad = isBatchMode ? " " : "";
 
         foreach (var group in result.GroupedDifferences)
         {
