@@ -54,7 +54,7 @@ public partial class MainViewModel : ObservableObject
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
 
-    public string AppVersion => "1.1.0 (fork by dazuki)";
+    public string AppVersion => "2.0.0 (fork by dazuki)";
     public bool IsSourceCustom => SelectedSourceIndex >= VersionInfo.BuiltInVersions.Length;
     public bool IsTargetCustom => SelectedTargetIndex >= VersionInfo.BuiltInVersions.Length;
 
