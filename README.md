@@ -3,6 +3,14 @@
 This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
 
 The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and changed target framework from .NET 7 to .NET 8 (LTS).
+
+### New in D2Compare-fork
+- Remember Source/Target/Custom dropdown selections between sessions
+- Window size, position, and panel proportions saved automatically
+- Display All (Batch Mode) with "Omit unchanged files" filter
+- "Show only new rows" filter for value breakdown
+- Diff stats per panel (+added -removed ~changed)
+- Added data files for D2R version 3.1.9.0 (91636)
  
 ## Requirements
 
