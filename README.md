@@ -1,6 +1,6 @@
 ## Main Screenshot
 
-![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_both.png)
+![Screenshot](src/D2Compare.UI/Assets/d2_compare_2.0.2_b.png)
 
 ## Datagrid Screenshot
 
