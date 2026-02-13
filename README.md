@@ -35,7 +35,7 @@ sudo pacman -S dotnet-runtime-8.0
 > 
 > This is more of a personal project to make some tools i like to use when modding D2R more compatible with Linux natively.
 > 
-> Feel free to try it out, otherwise use the original version by locbones!
+> Feel free to try it out, otherwise use the [Original D2Compare by locbones](https://github.com/locbones/D2Compare)!
 
 ---
 
