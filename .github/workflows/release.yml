@@ -22,14 +22,27 @@ jobs:
       - name: Publish
         run: dotnet publish src/D2Compare.UI/D2Compare.csproj -r ${{ matrix.runtime }} --self-contained false -o publish/${{ matrix.runtime }}
 
-      - name: Zip output
-        run: cd publish/${{ matrix.runtime }} && zip -r ../../D2Compare-${{ matrix.runtime }}.zip .
+      - name: Archive output (Windows)
+        if: matrix.runtime == 'win-x64'
+        env:
+          TAG: ${{ github.ref_name }}
+          RUNTIME: ${{ matrix.runtime }}
+        run: cd publish/$RUNTIME && zip -r "../../D2Compare-${TAG}-${RUNTIME}.zip" .
+
+      - name: Archive output (Linux)
+        if: matrix.runtime == 'linux-x64'
+        env:
+          TAG: ${{ github.ref_name }}
+          RUNTIME: ${{ matrix.runtime }}
+        run: cd publish/$RUNTIME && tar -czf "../../D2Compare-${TAG}-${RUNTIME}.tar.gz" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: D2Compare-${{ matrix.runtime }}
-          path: D2Compare-${{ matrix.runtime }}.zip
+          name: D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}
+          path: |
+            D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}.zip
+            D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}.tar.gz
 
   release:
     needs: build
@@ -47,4 +60,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: artifacts/**/*.zip
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
