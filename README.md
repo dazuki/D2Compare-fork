@@ -1,6 +1,8 @@
-> This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
->
-> The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and changed target framework from .NET 7 to .NET 8 (LTS).
+![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_both.png)
+
+This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
+
+The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and changed target framework from .NET 7 to .NET 8 (LTS).
  
 ## Requirements
 
@@ -26,10 +28,6 @@ sudo dnf install dotnet-runtime-8.0
 ```bash
 sudo pacman -S dotnet-runtime-8.0
 ```
-
-### Screenshot
-
-![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_both.png)
 
 > **Note:** This fork was developed by dazuki with the assistance of Claude Code.
 > 
