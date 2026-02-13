@@ -18,13 +18,22 @@ public static class FormattedTextBuilder
         var pad = isBatchMode ? " " : "";
 
         foreach (var changed in result.ChangedColumns)
-            lines.Add(Line(Span(pad + "Changed: ", SpanColor.Header, SpanStyle.Bold), Span(changed, SpanColor.Default)));
+        {
+            var (colTag, name) = ExtractTag(changed);
+            lines.Add(Line(Span($"{pad}Changed{colTag}: ", SpanColor.Header, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         foreach (var added in result.AddedColumns)
-            lines.Add(Line(Span(pad + "Added: ", SpanColor.Added, SpanStyle.Bold), Span(added, SpanColor.Default)));
+        {
+            var (colTag, name) = ExtractTag(added);
+            lines.Add(Line(Span($"{pad}Added{colTag}: ", SpanColor.Added, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         foreach (var removed in result.RemovedColumns)
-            lines.Add(Line(Span(pad + "Removed: ", SpanColor.Removed, SpanStyle.Bold), Span(removed, SpanColor.Default)));
+        {
+            var (colTag, name) = ExtractTag(removed);
+            lines.Add(Line(Span($"{pad}Removed{colTag}: ", SpanColor.Removed, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         return new FormattedDocument(lines);
     }
@@ -40,17 +49,20 @@ public static class FormattedTextBuilder
         var pad = isBatchMode ? " " : "";
 
         foreach (var changed in result.ChangedRows)
-            lines.Add(Line(Span(pad + "Changed: ", SpanColor.Header, SpanStyle.Bold), Span(changed, SpanColor.Default)));
+        {
+            var (rowTag, name) = ExtractTag(changed);
+            lines.Add(Line(Span($"{pad}Changed{rowTag}: ", SpanColor.Header, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         foreach (var added in result.AddedRows)
         {
-            var (rowTag, name) = ExtractRowTag(added);
+            var (rowTag, name) = ExtractTag(added);
             lines.Add(Line(Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold), Span(name, SpanColor.Default)));
         }
 
         foreach (var removed in result.RemovedRows)
         {
-            var (rowTag, name) = ExtractRowTag(removed);
+            var (rowTag, name) = ExtractTag(removed);
             lines.Add(Line(Span($"{pad}Removed{rowTag}: ", SpanColor.Removed, SpanStyle.Bold), Span(name, SpanColor.Default)));
         }
 
@@ -75,10 +87,11 @@ public static class FormattedTextBuilder
 
         foreach (var group in groups)
         {
+            var (rowTag, name) = ExtractTag(group.Key);
             if (group.IsNew)
-                lines.Add(Line(Span($"{pad}Added: ", SpanColor.Added, SpanStyle.Bold), Span(group.Key, SpanColor.Header, SpanStyle.Bold)));
+                lines.Add(Line(Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold), Span(name, SpanColor.Header, SpanStyle.Bold)));
             else
-                lines.Add(Line(Span(pad + group.Key, SpanColor.Header, SpanStyle.Bold)));
+                lines.Add(Line(Span($"{pad}{rowTag} ", SpanColor.Header, SpanStyle.Bold), Span(name, SpanColor.Header, SpanStyle.Bold)));
 
             foreach (var diff in group.Changes)
             {
@@ -145,9 +158,9 @@ public static class FormattedTextBuilder
         return spans;
     }
 
-    private static (string Tag, string Name) ExtractRowTag(string text)
+    private static (string Tag, string Name) ExtractTag(string text)
     {
-        if (!text.StartsWith("[r")) return ("", text);
+        if (text.Length < 3 || text[0] != '[') return ("", text);
         var end = text.IndexOf("] ");
         if (end < 0) return ("", text);
         return (text[..(end + 1)], text[(end + 2)..]);

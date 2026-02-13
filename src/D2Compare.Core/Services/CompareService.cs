@@ -21,6 +21,8 @@ public static class CompareService
         }
 
         // Column diffs
+        var sourceKeyList = sourceData.Keys.ToList();
+        var targetKeyList = targetData.Keys.ToList();
         var addedColumns = targetData.Keys.Except(sourceData.Keys).ToList();
         var removedColumns = sourceData.Keys.Except(targetData.Keys).ToList();
 
@@ -35,7 +37,8 @@ public static class CompareService
             {
                 if (SchemaFixProvider.IsKnownRename(added, removed, sourcePath))
                 {
-                    changedColumns.Add($"{removed} -> {added}");
+                    var colIdx = sourceKeyList.IndexOf(removed) + 1;
+                    changedColumns.Add($"[c{colIdx}] {removed} -> {added}");
                     remainingAdded.Remove(added);
                     remainingRemoved.Remove(removed);
                     break;
@@ -46,11 +49,21 @@ public static class CompareService
         // If equal remaining counts, treat as renames
         if (remainingAdded.Count == remainingRemoved.Count && remainingAdded.Count > 0)
         {
-            var paired = remainingAdded.Zip(remainingRemoved, (a, r) => $"{r} -> {a}").ToList();
-            changedColumns.AddRange(paired);
+            foreach (var (a, r) in remainingAdded.Zip(remainingRemoved))
+            {
+                var colIdx = sourceKeyList.IndexOf(r) + 1;
+                changedColumns.Add($"[c{colIdx}] {r} -> {a}");
+            }
             remainingAdded.Clear();
             remainingRemoved.Clear();
         }
+
+        var finalAddedColumns = remainingAdded
+            .Select(c => $"[c{targetKeyList.IndexOf(c) + 1}] {c}")
+            .ToList();
+        var finalRemovedColumns = remainingRemoved
+            .Select(c => $"[c{sourceKeyList.IndexOf(c) + 1}] {c}")
+            .ToList();
 
         // Row diffs
         var addedRowsTask = Task.Run(() => targetData[rowHeaderColumn].Except(sourceData[rowHeaderColumn]).ToList());
@@ -70,7 +83,8 @@ public static class CompareService
                 if (!processedAdded.Contains(added) && !processedRemoved.Contains(removed) &&
                     SchemaFixProvider.IsKnownRename(added, removed, sourcePath))
                 {
-                    changedRows.Add($"{removed} -> {added}");
+                    var srcRow = sourceData[rowHeaderColumn].IndexOf(removed) + 1;
+                    changedRows.Add($"[r{srcRow}] {removed} -> {added}");
                     processedAdded.Add(added);
                     processedRemoved.Add(removed);
                 }
@@ -79,13 +93,16 @@ public static class CompareService
 
         if (addedRows.Count == allRemovedRows.Count)
         {
-            var paired = addedRows.Zip(allRemovedRows, (a, r) => $"{r} -> {a}");
-            foreach (var pair in paired)
+            foreach (var (added, removed) in addedRows.Zip(allRemovedRows))
             {
-                processedAdded.Add(pair.Split(" -> ")[1]);
-                processedRemoved.Add(pair.Split(" -> ")[0]);
+                if (!processedAdded.Contains(added) && !processedRemoved.Contains(removed))
+                {
+                    var srcRow = sourceData[rowHeaderColumn].IndexOf(removed) + 1;
+                    changedRows.Add($"[r{srcRow}] {removed} -> {added}");
+                    processedAdded.Add(added);
+                    processedRemoved.Add(removed);
+                }
             }
-            changedRows.AddRange(paired);
         }
 
         var finalAddedRows = addedRows
@@ -103,8 +120,8 @@ public static class CompareService
 
         return new CompareResult(
             Path.GetFileName(sourcePath),
-            remainingAdded,
-            remainingRemoved,
+            finalAddedColumns,
+            finalRemovedColumns,
             changedColumns,
             finalAddedRows,
             finalRemovedRows,

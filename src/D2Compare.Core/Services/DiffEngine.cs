@@ -82,7 +82,7 @@ public static class DiffEngine
                     if (value1 != value2)
                     {
                         string valueDifference = $"{header}: '{value1}' -> '{value2}'";
-                        string column0Value = $"{rowHeader} (Row {Math.Min(index1, index2) + 1})";
+                        string column0Value = $"[r{Math.Min(index1, index2) + 1}] {rowHeader}";
                         int columnIndex = allHeaders.ToList().IndexOf(header);
 
                         lock (groupedDifferences)
@@ -109,7 +109,7 @@ public static class DiffEngine
                     var value2 = file2Data[header][index2];
 
                     string valueDifference = $"{header}: '{value2}'";
-                    string column0Value = $"{rowHeader} (Row {index2 + 1})";
+                    string column0Value = $"[r{index2 + 1}] {rowHeader}";
                     int columnIndex = allHeaders.ToList().IndexOf(header);
 
                     lock (groupedDifferences)
@@ -125,7 +125,7 @@ public static class DiffEngine
         });
 
         return groupedDifferences
-            .OrderBy(pair => int.Parse(Regex.Match(pair.Key, @"Row (\d+)").Groups[1].Value))
+            .OrderBy(pair => int.Parse(Regex.Match(pair.Key, @"\[r(\d+)\]").Groups[1].Value))
             .Select(pair =>
             {
                 var sorted = pair.Value.OrderBy(t => int.Parse(t.ColIndex)).ToList();

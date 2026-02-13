@@ -121,12 +121,12 @@ public class FormattedTextPresenter : UserControl
         }
     }
 
-    private static TextBlock? FindChildTextBlock(Control container)
+    private static SelectableTextBlock? FindChildTextBlock(Control container)
     {
-        // Container is typically ContentPresenter; TextBlock is its direct visual child
+        // Container is typically ContentPresenter; SelectableTextBlock is its direct visual child
         foreach (var child in container.GetVisualChildren())
         {
-            if (child is TextBlock tb)
+            if (child is SelectableTextBlock tb)
                 return tb;
         }
         return null;
@@ -134,7 +134,7 @@ public class FormattedTextPresenter : UserControl
 
     private Control BuildLineBlock(FormattedLine line, INameScope _)
     {
-        var tb = new TextBlock { TextWrapping = TextWrapping.NoWrap };
+        var tb = new SelectableTextBlock { TextWrapping = TextWrapping.NoWrap };
 
         if (line.Spans.Count == 0)
             return tb;
