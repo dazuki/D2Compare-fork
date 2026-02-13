@@ -11,11 +11,13 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="Black" />
-                    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="White" />
+                    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3" />
+                    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#121212" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <FontFamily x:Key="MonoFont">avares://D2Compare/Assets/Fonts#JetBrains Mono</FontFamily>
