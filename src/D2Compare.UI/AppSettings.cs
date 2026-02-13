@@ -21,8 +21,6 @@ public class AppSettings
 
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 720;
-    public double? WindowX { get; set; }
-    public double? WindowY { get; set; }
     public bool IsMaximized { get; set; }
     public double Column0Star { get; set; } = 1.0;
     public double Column2Star { get; set; } = 1.0;

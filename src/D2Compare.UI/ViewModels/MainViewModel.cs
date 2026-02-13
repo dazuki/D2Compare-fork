@@ -47,6 +47,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private FormattedDocument? _valuesDocument;
     [ObservableProperty] private FormattedDocument? _filesDocument;
 
+    public bool HasNoFileChanges => FilesDocument is null || FilesDocument.Lines.Count == 0;
+
+    partial void OnFilesDocumentChanged(FormattedDocument? value) => OnPropertyChanged(nameof(HasNoFileChanges));
+
     public AppSettings Settings => _settings;
     private readonly AppSettings _settings;
 
@@ -108,6 +112,7 @@ public partial class MainViewModel : ObservableObject
 
         _settings.SelectedSourceIndex = value;
         _settings.Save();
+        OnTargetChanged();
     }
 
     partial void OnSelectedTargetIndexChanged(int value)
@@ -280,9 +285,10 @@ public partial class MainViewModel : ObservableObject
 
         FileList = new ObservableCollection<string>(fileResult.CommonFiles);
         FilesDocument = FormattedTextBuilder.BuildFileDiffs(fileResult);
-
-        if (FileList.Count > 0)
-            SelectedFileIndex = 0;
+        SelectedFileIndex = -1;
+        ColumnsDocument = null;
+        RowsDocument = null;
+        ValuesDocument = null;
     }
 
     private async Task SelectCustomFolder(bool isSource)

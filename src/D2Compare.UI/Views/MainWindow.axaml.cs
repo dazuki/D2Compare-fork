@@ -22,13 +22,6 @@ public partial class MainWindow : Window
         Width = s.WindowWidth;
         Height = s.WindowHeight;
 
-        if (s.WindowX.HasValue && s.WindowY.HasValue)
-        {
-            var pos = new PixelPoint((int)s.WindowX.Value, (int)s.WindowY.Value);
-            if (IsPositionOnScreen(pos))
-                Position = pos;
-        }
-
         if (s.IsMaximized)
             WindowState = WindowState.Maximized;
 
@@ -50,8 +43,6 @@ public partial class MainWindow : Window
         {
             s.WindowWidth = Width;
             s.WindowHeight = Height;
-            s.WindowX = Position.X;
-            s.WindowY = Position.Y;
         }
 
         // Save splitter proportions
@@ -61,18 +52,5 @@ public partial class MainWindow : Window
         s.Column4Star = cols[4].Width.Value;
 
         s.Save();
-    }
-
-    private bool IsPositionOnScreen(PixelPoint pos)
-    {
-        if (Screens?.All is not { } screens) return false;
-
-        foreach (var screen in screens)
-        {
-            if (screen.Bounds.Contains(pos))
-                return true;
-        }
-
-        return false;
     }
 }

@@ -32,6 +32,9 @@ public class FormattedTextPresenter : UserControl
     private static readonly IBrush s_fileNameMuted = new ImmutableSolidColorBrush(Color.FromRgb(150, 150, 150));
     private static readonly IBrush s_defaultLight = Brushes.Black;
     private static readonly IBrush s_defaultDark = new ImmutableSolidColorBrush(Color.FromRgb(220, 220, 220));
+    private static readonly IBrush s_highlightLight = Brushes.Yellow;
+    private static readonly IBrush s_highlightDark = new ImmutableSolidColorBrush(Color.FromRgb(80, 80, 0));
+    private static readonly IBrush s_highlightFgDark = Brushes.White;
 
     private readonly ItemsControl _itemsControl;
 
@@ -152,7 +155,7 @@ public class FormattedTextPresenter : UserControl
 
             if (!string.IsNullOrEmpty(searchTerm) && span.Text.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
             {
-                AddHighlightedRuns(inlines, span.Text, searchTerm, foreground, fontWeight, fontSize);
+                AddHighlightedRuns(inlines, span.Text, searchTerm, foreground, fontWeight, fontSize, isDark);
             }
             else
             {
@@ -168,9 +171,12 @@ public class FormattedTextPresenter : UserControl
         return inlines;
     }
 
-    private static void AddHighlightedRuns(InlineCollection inlines, string text, string term, IBrush foreground, FontWeight weight, double fontSize)
+    private static void AddHighlightedRuns(InlineCollection inlines, string text, string term, IBrush foreground, FontWeight weight, double fontSize, bool isDark)
     {
         int pos = 0;
+        var highlightBg = isDark ? s_highlightDark : s_highlightLight;
+        var highlightFg = isDark ? s_highlightFgDark : foreground;
+
         while (pos < text.Length)
         {
             int matchIdx = text.IndexOf(term, pos, StringComparison.OrdinalIgnoreCase);
@@ -197,10 +203,10 @@ public class FormattedTextPresenter : UserControl
 
             inlines.Add(new Run(text[matchIdx..(matchIdx + term.Length)])
             {
-                Foreground = foreground,
+                Foreground = highlightFg,
                 FontWeight = weight,
                 FontSize = fontSize,
-                Background = Brushes.Yellow,
+                Background = highlightBg,
             });
 
             pos = matchIdx + term.Length;
