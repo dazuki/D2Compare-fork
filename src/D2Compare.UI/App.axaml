@@ -5,6 +5,7 @@
              RequestedThemeVariant="Light">
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
     </Application.Styles>
 
     <Application.Resources>
@@ -18,6 +19,7 @@
                     <SolidColorBrush x:Key="StatAddedBrush" Color="Green" />
                     <SolidColorBrush x:Key="StatRemovedBrush" Color="Red" />
                     <SolidColorBrush x:Key="StatChangedBrush" Color="#191970" />
+                    <SolidColorBrush x:Key="FrozenColumnBrush" Color="#E8E8E8" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="White" />
@@ -27,6 +29,7 @@
                     <SolidColorBrush x:Key="StatAddedBrush" Color="#50C878" />
                     <SolidColorBrush x:Key="StatRemovedBrush" Color="#FF6464" />
                     <SolidColorBrush x:Key="StatChangedBrush" Color="#4169E1" />
+                    <SolidColorBrush x:Key="FrozenColumnBrush" Color="#2A2A2A" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <controls:IntToBoolConverter x:Key="IntToBool" />

@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using D2Compare.Core.Models;
 using D2Compare.Core.Services;
+using D2Compare.Views;
 
 namespace D2Compare.ViewModels;
 
@@ -245,7 +246,8 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
         var path = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
-        OpenFile(path);
+        var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
+        OpenFileViewer(path, label);
     }
 
     [RelayCommand]
@@ -253,7 +255,14 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
         var path = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
-        OpenFile(path);
+        var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
+        OpenFileViewer(path, label);
+    }
+
+    private static void OpenFileViewer(string path, string label)
+    {
+        if (!File.Exists(path)) return;
+        new FileViewerWindow(path, label).Show();
     }
 
     private void RebuildBatchDocuments()
@@ -404,12 +413,6 @@ public partial class MainViewModel : ObservableObject
         }
 
         MatchLabel = count > 0 ? $"{count} matches" : "0 matches";
-    }
-
-    private static void OpenFile(string path)
-    {
-        if (!File.Exists(path)) return;
-        OpenUrl(path);
     }
 
     private static void OpenUrl(string url) =>
