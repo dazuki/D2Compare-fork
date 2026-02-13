@@ -1,12 +1,31 @@
 > **Note:** This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare). The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and upgraded from .NET 7 to .NET 8 (LTS).
 > 
 > This fork was developed by dazuki with the assistance of [Claude Code](https://claude.ai/code).
-> 
-> ## Requirements
-> 
-> .NET 8 SDK or Runtime (LTS)
-> 
-> Download: https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+ 
+## Requirements
+
+### Windows
+
+.NET 8 SDK or Runtime (LTS)
+
+Download: https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+
+### Linux
+
+**Ubuntu/Debian:**
+```bash
+sudo apt install dotnet-runtime-8.0
+```
+
+**Fedora:**
+```bash
+sudo dnf install dotnet-runtime-8.0
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S dotnet-runtime-8.0
+```
 
 ---
 
