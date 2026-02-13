@@ -1,6 +1,6 @@
-> **Note:** This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare). The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and upgraded from .NET 7 to .NET 8 (LTS).
-> 
-> This fork was developed by dazuki with the assistance of [Claude Code](https://claude.ai/code).
+> This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
+>
+> The original WinForms application has been migrated to [Avalonia UI](https://avaloniaui.net/) for cross-platform support (Windows and Linux) and changed target framework from .NET 7 to .NET 8 (LTS).
  
 ## Requirements
 
@@ -26,6 +26,16 @@ sudo dnf install dotnet-runtime-8.0
 ```bash
 sudo pacman -S dotnet-runtime-8.0
 ```
+
+### Screenshot
+
+![D2Compare-fork Screenshot](https://i.imgur.com/9kYoo5Y.png)
+
+> **Note:** This fork was developed by dazuki with the assistance of Claude Code.
+> 
+> This is more of a personal project to make some tools i like to use when modding D2R more compatible with Linux natively.
+> 
+> Feel free to try it out, otherwise use the original version by locbones!
 
 ---
 

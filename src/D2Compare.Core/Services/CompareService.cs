@@ -88,8 +88,14 @@ public static class CompareService
             changedRows.AddRange(paired);
         }
 
-        var finalAddedRows = addedRows.Where(r => !processedAdded.Contains(r)).ToList();
-        var finalRemovedRows = allRemovedRows.Where(r => !processedRemoved.Contains(r)).ToList();
+        var finalAddedRows = addedRows
+            .Where(r => !processedAdded.Contains(r))
+            .Select(r => $"[r{targetData[rowHeaderColumn].IndexOf(r) + 1}] {r}")
+            .ToList();
+        var finalRemovedRows = allRemovedRows
+            .Where(r => !processedRemoved.Contains(r))
+            .Select(r => $"[r{sourceData[rowHeaderColumn].IndexOf(r) + 1}] {r}")
+            .ToList();
 
         // Value-level diffs
         var groupedDifferences = DiffEngine.GetGroupedDifferences(

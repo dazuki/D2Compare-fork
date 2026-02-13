@@ -43,33 +43,46 @@ public static class FormattedTextBuilder
             lines.Add(Line(Span(pad + "Changed: ", SpanColor.Header, SpanStyle.Bold), Span(changed, SpanColor.Default)));
 
         foreach (var added in result.AddedRows)
-            lines.Add(Line(Span(pad + "Added: ", SpanColor.Added, SpanStyle.Bold), Span(added, SpanColor.Default)));
+        {
+            var (rowTag, name) = ExtractRowTag(added);
+            lines.Add(Line(Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         foreach (var removed in result.RemovedRows)
-            lines.Add(Line(Span(pad + "Removed: ", SpanColor.Removed, SpanStyle.Bold), Span(removed, SpanColor.Default)));
+        {
+            var (rowTag, name) = ExtractRowTag(removed);
+            lines.Add(Line(Span($"{pad}Removed{rowTag}: ", SpanColor.Removed, SpanStyle.Bold), Span(name, SpanColor.Default)));
+        }
 
         return new FormattedDocument(lines);
     }
 
-    public static FormattedDocument BuildValueDiffs(CompareResult result, bool isBatchMode)
+    public static FormattedDocument BuildValueDiffs(CompareResult result, bool isBatchMode, bool showOnlyNew = false)
     {
         var lines = new List<FormattedLine>();
 
-        if (isBatchMode)
-            lines.Add(result.GroupedDifferences.Count > 0 ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName));
+        var groups = showOnlyNew
+            ? result.GroupedDifferences.Where(g => g.IsNew).ToList()
+            : result.GroupedDifferences;
 
-        if (result.GroupedDifferences.Count == 0)
+        if (isBatchMode)
+            lines.Add(groups.Count > 0 ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName));
+
+        if (groups.Count == 0)
             return new FormattedDocument(lines);
 
         var pad = isBatchMode ? " " : "";
 
-        foreach (var group in result.GroupedDifferences)
+        foreach (var group in groups)
         {
-            lines.Add(Line(Span(pad + group.Key, SpanColor.Header, SpanStyle.Bold)));
+            if (group.IsNew)
+                lines.Add(Line(Span($"{pad}Added: ", SpanColor.Added, SpanStyle.Bold), Span(group.Key, SpanColor.Header, SpanStyle.Bold)));
+            else
+                lines.Add(Line(Span(pad + group.Key, SpanColor.Header, SpanStyle.Bold)));
 
             foreach (var diff in group.Changes)
             {
-                var spans = ParseBoldMarkup(pad + "- " + diff);
+                var spans = ParseBoldMarkup(pad + " " + diff);
                 lines.Add(new FormattedLine(spans));
             }
 
@@ -130,6 +143,14 @@ public static class FormattedTextBuilder
         }
 
         return spans;
+    }
+
+    private static (string Tag, string Name) ExtractRowTag(string text)
+    {
+        if (!text.StartsWith("[r")) return ("", text);
+        var end = text.IndexOf("] ");
+        if (end < 0) return ("", text);
+        return (text[..(end + 1)], text[(end + 2)..]);
     }
 
     private static FormattedSpan Span(string text, SpanColor color, SpanStyle style = SpanStyle.Normal) =>

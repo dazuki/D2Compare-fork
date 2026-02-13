@@ -31,7 +31,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _selectedFileIndex = -1;
 
     [ObservableProperty] private bool _includeNewRows;
+    [ObservableProperty] private bool _showOnlyNewRows;
     [ObservableProperty] private bool _omitUnchangedFiles = true;
+    [ObservableProperty] private bool _batchReloadNeeded;
     [ObservableProperty] private bool _isDarkMode;
 
     [ObservableProperty] private string _statusText = "";
@@ -46,6 +48,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private FormattedDocument? _rowsDocument;
     [ObservableProperty] private FormattedDocument? _valuesDocument;
     [ObservableProperty] private FormattedDocument? _filesDocument;
+
+    [ObservableProperty] private int _columnsAdded;
+    [ObservableProperty] private int _columnsRemoved;
+    [ObservableProperty] private int _columnsChanged;
+    [ObservableProperty] private int _rowsAdded;
+    [ObservableProperty] private int _rowsRemoved;
+    [ObservableProperty] private int _rowsChanged;
+    [ObservableProperty] private int _valuesChanged;
+    [ObservableProperty] private int _valuesNew;
 
     public bool HasNoFileChanges => FilesDocument is null || FilesDocument.Lines.Count == 0;
 
@@ -130,19 +141,31 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedFileIndexChanged(int value)
     {
         if (value < 0 || value >= FileList.Count) return;
+        BatchReloadNeeded = false;
         RunSingleComparison();
     }
 
     partial void OnIncludeNewRowsChanged(bool value)
     {
-        if (_sourceFolderPath.Length > 0 && SelectedFileIndex >= 0)
+        if (!value) ShowOnlyNewRows = false;
+        if (SelectedFileIndex >= 0 && _sourceFolderPath.Length > 0)
             RunSingleComparison();
+        else if (_batchResults.Count > 0)
+            BatchReloadNeeded = true;
+    }
+
+    partial void OnShowOnlyNewRowsChanged(bool value)
+    {
+        if (SelectedFileIndex >= 0 && _sourceFolderPath.Length > 0)
+            RunSingleComparison();
+        else if (_batchResults.Count > 0)
+            BatchReloadNeeded = true;
     }
 
     partial void OnOmitUnchangedFilesChanged(bool value)
     {
-        if (_batchResults.Count > 0)
-            RebuildBatchDocuments();
+        if (_batchResults.Count > 0 && SelectedFileIndex < 0)
+            BatchReloadNeeded = true;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -185,6 +208,7 @@ public partial class MainViewModel : ObservableObject
 
             SelectedFileIndex = -1;
             RebuildBatchDocuments();
+            BatchReloadNeeded = false;
             SearchText = "";
         }
         finally
@@ -250,8 +274,10 @@ public partial class MainViewModel : ObservableObject
             colResults.Select(r => FormattedTextBuilder.BuildColumnDiffs(r, true)));
         RowsDocument = FormattedTextBuilder.MergeDocuments(
             rowResults.Select(r => FormattedTextBuilder.BuildRowDiffs(r, true)));
+        var onlyNew = ShowOnlyNewRows;
         ValuesDocument = FormattedTextBuilder.MergeDocuments(
-            valResults.Select(r => FormattedTextBuilder.BuildValueDiffs(r, true)));
+            valResults.Select(r => FormattedTextBuilder.BuildValueDiffs(r, true, onlyNew)));
+        UpdateStats(_batchResults);
     }
 
     private void RunSingleComparison()
@@ -271,9 +297,33 @@ public partial class MainViewModel : ObservableObject
 
         ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
         RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
-        ValuesDocument = FormattedTextBuilder.BuildValueDiffs(result, false);
+        ValuesDocument = FormattedTextBuilder.BuildValueDiffs(result, false, ShowOnlyNewRows);
+        UpdateStats(new[] { result });
 
         SearchText = "";
+    }
+
+    private void UpdateStats(IEnumerable<CompareResult> results)
+    {
+        int ca = 0, cr = 0, cc = 0, ra = 0, rr = 0, rc = 0, vc = 0, vn = 0;
+        foreach (var r in results)
+        {
+            ca += r.AddedColumns.Count;
+            cr += r.RemovedColumns.Count;
+            cc += r.ChangedColumns.Count;
+            ra += r.AddedRows.Count;
+            rr += r.RemovedRows.Count;
+            rc += r.ChangedRows.Count;
+            foreach (var g in r.GroupedDifferences)
+            {
+                if (g.IsNew) vn++;
+                else vc++;
+            }
+        }
+        ColumnsAdded = ca; ColumnsRemoved = cr; ColumnsChanged = cc;
+        RowsAdded = ra; RowsRemoved = rr; RowsChanged = rc;
+        ValuesChanged = ShowOnlyNewRows ? 0 : vc;
+        ValuesNew = vn;
     }
 
     private void OnTargetChanged()

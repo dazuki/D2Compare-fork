@@ -6,7 +6,7 @@
         x:Class="D2Compare.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{Binding AppVersion, StringFormat='D2Compare v{0}'}"
-        MinWidth="980" MinHeight="380"
+        MinWidth="1110" MinHeight="380"
         Icon="/Assets/compare_yRb_icon.ico"
         Background="{DynamicResource WindowBackgroundBrush}">
 
@@ -71,8 +71,14 @@
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <ti:TablerIcon Icon="IconFiles" Width="16" Height="16" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
                             <TextBlock Text="Display All" VerticalAlignment="Center" />
+                            <TextBlock Text="(Reload Needed)" VerticalAlignment="Center"
+                                       IsVisible="{Binding BatchReloadNeeded}"
+                                       Foreground="{DynamicResource WarningBrush}" />
                         </StackPanel>
                     </Button>
+                    <TextBlock Text="Resource Heavy" VerticalAlignment="Center"
+                               IsVisible="{Binding IncludeNewRows}"
+                               Foreground="{DynamicResource WarningBrush}" />
                 </StackPanel>
 
                 <!-- Checkboxes row, aligned with dropdowns -->
@@ -81,6 +87,9 @@
                               VerticalAlignment="Center" />
                     <CheckBox Content="Include new rows in value breakdown (slower)"
                               IsChecked="{Binding IncludeNewRows}" VerticalAlignment="Center" />
+                    <CheckBox Content="Show only new rows"
+                              IsChecked="{Binding ShowOnlyNewRows}" IsEnabled="{Binding IncludeNewRows}"
+                              VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
 
@@ -108,7 +117,7 @@
                         Background="{DynamicResource PanelBackgroundBrush}"
                         Padding="8" MinWidth="280" MaxHeight="220">
                     <Panel>
-                        <controls:FormattedTextPresenter Document="{Binding FilesDocument}" FontSize="11"
+                        <controls:FormattedTextPresenter Document="{Binding FilesDocument}" FontSize="13"
                                                          FontFamily="{StaticResource MonoFont}" />
                         <TextBlock Text="No changes..."
                                    IsVisible="{Binding HasNoFileChanges}"
@@ -138,14 +147,36 @@
             <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
                 <ti:TablerIcon Icon="IconLayoutColumns" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
                 <TextBlock Text="Columns Altered" FontWeight="Bold" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ColumnsAdded, StringFormat='+{0}'}" Foreground="{DynamicResource StatAddedBrush}"
+                               IsVisible="{Binding ColumnsAdded, Converter={StaticResource IntToBool}}" FontSize="13" />
+                    <TextBlock Text="{Binding ColumnsRemoved, StringFormat='-{0}'}" Foreground="{DynamicResource StatRemovedBrush}"
+                               IsVisible="{Binding ColumnsRemoved, Converter={StaticResource IntToBool}}" FontSize="13" />
+                    <TextBlock Text="{Binding ColumnsChanged, StringFormat='~{0}'}" Foreground="{DynamicResource StatChangedBrush}"
+                               IsVisible="{Binding ColumnsChanged, Converter={StaticResource IntToBool}}" FontSize="13" />
+                </StackPanel>
             </StackPanel>
             <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
                 <ti:TablerIcon Icon="IconLayoutRows" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
                 <TextBlock Text="Rows Altered" FontWeight="Bold" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding RowsAdded, StringFormat='+{0}'}" Foreground="{DynamicResource StatAddedBrush}"
+                               IsVisible="{Binding RowsAdded, Converter={StaticResource IntToBool}}" FontSize="13" />
+                    <TextBlock Text="{Binding RowsRemoved, StringFormat='-{0}'}" Foreground="{DynamicResource StatRemovedBrush}"
+                               IsVisible="{Binding RowsRemoved, Converter={StaticResource IntToBool}}" FontSize="13" />
+                    <TextBlock Text="{Binding RowsChanged, StringFormat='~{0}'}" Foreground="{DynamicResource StatChangedBrush}"
+                               IsVisible="{Binding RowsChanged, Converter={StaticResource IntToBool}}" FontSize="13" />
+                </StackPanel>
             </StackPanel>
             <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
                 <ti:TablerIcon Icon="IconPencil" Width="18" Height="18" StrokeWidth="1.5" Brush="{DynamicResource IconForegroundBrush}" />
                 <TextBlock Text="Values" FontWeight="Bold" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ValuesChanged, StringFormat='~{0}'}" Foreground="{DynamicResource StatChangedBrush}"
+                               IsVisible="{Binding ValuesChanged, Converter={StaticResource IntToBool}}" FontSize="13" />
+                    <TextBlock Text="{Binding ValuesNew, StringFormat='+{0}'}" Foreground="{DynamicResource StatAddedBrush}"
+                               IsVisible="{Binding ValuesNew, Converter={StaticResource IntToBool}}" FontSize="13" />
+                </StackPanel>
             </StackPanel>
 
             <!-- Columns Panel -->
@@ -210,7 +241,7 @@
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <ti:TablerIcon Icon="IconBrandGithubFilled" Width="14" Height="14" StrokeWidth="1.5"
                                Brush="{DynamicResource IconForegroundBrush}" />
-                <TextBlock Text="Original by locbones" FontSize="11" VerticalAlignment="Center" />
+                <TextBlock Text="Original by locbones" FontSize="13" VerticalAlignment="Center" />
             </StackPanel>
         </Button>
     </Grid>

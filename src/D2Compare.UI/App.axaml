@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:D2Compare.Controls"
              x:Class="D2Compare.App"
              RequestedThemeVariant="Light">
     <Application.Styles>
@@ -13,13 +14,22 @@
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="Black" />
                     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3" />
                     <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="WarningBrush" Color="#B8860B" />
+                    <SolidColorBrush x:Key="StatAddedBrush" Color="Green" />
+                    <SolidColorBrush x:Key="StatRemovedBrush" Color="Red" />
+                    <SolidColorBrush x:Key="StatChangedBrush" Color="#191970" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1E1E1E" />
                     <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#121212" />
+                    <SolidColorBrush x:Key="WarningBrush" Color="#FFA500" />
+                    <SolidColorBrush x:Key="StatAddedBrush" Color="#50C878" />
+                    <SolidColorBrush x:Key="StatRemovedBrush" Color="#FF6464" />
+                    <SolidColorBrush x:Key="StatChangedBrush" Color="#4169E1" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <controls:IntToBoolConverter x:Key="IntToBool" />
             <FontFamily x:Key="MonoFont">avares://D2Compare/Assets/Fonts#JetBrains Mono</FontFamily>
             <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
             <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>

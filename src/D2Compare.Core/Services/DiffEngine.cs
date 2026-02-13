@@ -53,6 +53,7 @@ public static class DiffEngine
         bool includeNewRows)
     {
         var groupedDifferences = new Dictionary<string, List<(string Diff, string ColIndex)>>();
+        var newRowKeys = new HashSet<string>();
 
         var allRowHeaders = new HashSet<string>(file1Data[rowHeaderColumn]);
         allRowHeaders.UnionWith(file2Data[rowHeaderColumn]);
@@ -80,7 +81,7 @@ public static class DiffEngine
 
                     if (value1 != value2)
                     {
-                        string valueDifference = $"<b>{header}</b>: '{value1}' -> '{value2}'";
+                        string valueDifference = $"{header}: '{value1}' -> '{value2}'";
                         string column0Value = $"{rowHeader} (Row {Math.Min(index1, index2) + 1})";
                         int columnIndex = allHeaders.ToList().IndexOf(header);
 
@@ -102,13 +103,12 @@ public static class DiffEngine
                         continue;
 
                     int index2 = file2Data[rowHeaderColumn].IndexOf(rowHeader);
-
                     if (index2 == -1)
                         continue;
 
                     var value2 = file2Data[header][index2];
 
-                    string valueDifference = $"<b>{header}</b>: 'N/A' -> '{value2}'";
+                    string valueDifference = $"{header}: '{value2}'";
                     string column0Value = $"{rowHeader} (Row {index2 + 1})";
                     int columnIndex = allHeaders.ToList().IndexOf(header);
 
@@ -118,6 +118,7 @@ public static class DiffEngine
                             groupedDifferences[column0Value] = new List<(string, string)>();
 
                         groupedDifferences[column0Value].Add((valueDifference, columnIndex.ToString()));
+                        newRowKeys.Add(column0Value);
                     }
                 }
             }
@@ -128,7 +129,7 @@ public static class DiffEngine
             .Select(pair =>
             {
                 var sorted = pair.Value.OrderBy(t => int.Parse(t.ColIndex)).ToList();
-                return new DiffGroup(pair.Key, sorted.Select(t => t.Diff).ToList());
+                return new DiffGroup(pair.Key, sorted.Select(t => t.Diff).ToList(), newRowKeys.Contains(pair.Key));
             })
             .ToList();
     }
