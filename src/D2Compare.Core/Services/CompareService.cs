@@ -38,7 +38,7 @@ public static class CompareService
                 if (SchemaFixProvider.IsKnownRename(added, removed, sourcePath))
                 {
                     var colIdx = sourceKeyList.IndexOf(removed) + 1;
-                    changedColumns.Add($"[c{colIdx}] {removed} -> {added}");
+                    changedColumns.Add($"(Col {colIdx}) {removed} -> {added}");
                     remainingAdded.Remove(added);
                     remainingRemoved.Remove(removed);
                     break;
@@ -52,17 +52,17 @@ public static class CompareService
             foreach (var (a, r) in remainingAdded.Zip(remainingRemoved))
             {
                 var colIdx = sourceKeyList.IndexOf(r) + 1;
-                changedColumns.Add($"[c{colIdx}] {r} -> {a}");
+                changedColumns.Add($"(Col {colIdx}) {r} -> {a}");
             }
             remainingAdded.Clear();
             remainingRemoved.Clear();
         }
 
         var finalAddedColumns = remainingAdded
-            .Select(c => $"[c{targetKeyList.IndexOf(c) + 1}] {c}")
+            .Select(c => $"(Col {targetKeyList.IndexOf(c) + 1}) {c}")
             .ToList();
         var finalRemovedColumns = remainingRemoved
-            .Select(c => $"[c{sourceKeyList.IndexOf(c) + 1}] {c}")
+            .Select(c => $"(Col {sourceKeyList.IndexOf(c) + 1}) {c}")
             .ToList();
 
         // Row diffs
@@ -84,7 +84,7 @@ public static class CompareService
                     SchemaFixProvider.IsKnownRename(added, removed, sourcePath))
                 {
                     var srcRow = sourceData[rowHeaderColumn].IndexOf(removed) + 1;
-                    changedRows.Add($"[r{srcRow}] {removed} -> {added}");
+                    changedRows.Add($"(Row {srcRow}) {removed} -> {added}");
                     processedAdded.Add(added);
                     processedRemoved.Add(removed);
                 }
@@ -98,7 +98,7 @@ public static class CompareService
                 if (!processedAdded.Contains(added) && !processedRemoved.Contains(removed))
                 {
                     var srcRow = sourceData[rowHeaderColumn].IndexOf(removed) + 1;
-                    changedRows.Add($"[r{srcRow}] {removed} -> {added}");
+                    changedRows.Add($"(Row {srcRow}) {removed} -> {added}");
                     processedAdded.Add(added);
                     processedRemoved.Add(removed);
                 }
@@ -107,11 +107,11 @@ public static class CompareService
 
         var finalAddedRows = addedRows
             .Where(r => !processedAdded.Contains(r))
-            .Select(r => $"[r{targetData[rowHeaderColumn].IndexOf(r) + 1}] {r}")
+            .Select(r => $"(Row {targetData[rowHeaderColumn].IndexOf(r) + 1}) {r}")
             .ToList();
         var finalRemovedRows = allRemovedRows
             .Where(r => !processedRemoved.Contains(r))
-            .Select(r => $"[r{sourceData[rowHeaderColumn].IndexOf(r) + 1}] {r}")
+            .Select(r => $"(Row {sourceData[rowHeaderColumn].IndexOf(r) + 1}) {r}")
             .ToList();
 
         // Value-level diffs

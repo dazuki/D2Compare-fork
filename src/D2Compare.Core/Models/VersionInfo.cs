@@ -19,7 +19,11 @@ public record VersionInfo(string DisplayName, string FolderName)
         new("2.5.2.0 (71776)", "71776"),
         new("2.6.0.0 (73090)", "73090"),
         new("2.7.2.0 (77312)", "77312"),
-        new("3.1.9.0 (91636)", "91636"),
+        new("2.7.3.0 (80273)", "80273"),
+        new("2.7.4.0 (81914)", "81914"),
+        new("2.8.0.0 (83721)", "83721"),
+        new("2.9.0.0 (90471)", "90471"),
+        new("3.0.0.0 (91636)", "91636"),
     ];
 
     public string GetPath() => Path.Combine("TXT", FolderName);

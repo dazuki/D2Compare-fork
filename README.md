@@ -16,7 +16,6 @@ The original WinForms application has been migrated to [Avalonia UI](https://ava
 - Display All (Batch Mode) with "Omit unchanged files" filter
 - "Show only new rows" filter for value breakdown
 - Diff stats per panel (+added -removed ~changed)
-- Added data files for D2R version 3.1.9.0 (91636)
 - Ctrl+C to copy text from diff panels
 - Tab Grid Data viewer when opening source/target files
  

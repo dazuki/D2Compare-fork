@@ -91,7 +91,7 @@ public static class FormattedTextBuilder
             if (group.IsNew)
                 lines.Add(Line(Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold), Span(name, SpanColor.Header, SpanStyle.Bold)));
             else
-                lines.Add(Line(Span($"{pad}{rowTag} ", SpanColor.Header, SpanStyle.Bold), Span(name, SpanColor.Header, SpanStyle.Bold)));
+                lines.Add(Line(Span($"{pad}{name}", SpanColor.Header, SpanStyle.Bold), Span($"{rowTag}", SpanColor.Header, SpanStyle.Bold)));
 
             foreach (var diff in group.Changes)
             {
@@ -160,10 +160,10 @@ public static class FormattedTextBuilder
 
     private static (string Tag, string Name) ExtractTag(string text)
     {
-        if (text.Length < 3 || text[0] != '[') return ("", text);
-        var end = text.IndexOf("] ");
+        if (text.Length < 3 || text[0] != '(') return ("", text);
+        var end = text.IndexOf(") ");
         if (end < 0) return ("", text);
-        return (text[..(end + 1)], text[(end + 2)..]);
+        return (" " + text[..(end + 1)], text[(end + 2)..]);
     }
 
     private static FormattedSpan Span(string text, SpanColor color, SpanStyle style = SpanStyle.Normal) =>
