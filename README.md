@@ -29,7 +29,7 @@ sudo pacman -S dotnet-runtime-8.0
 
 ### Screenshot
 
-![D2Compare-fork Screenshot](https://i.imgur.com/9kYoo5Y.png)
+<img src="https://i.imgur.com/9kYoo5Y.png" />
 
 > **Note:** This fork was developed by dazuki with the assistance of Claude Code.
 > 
