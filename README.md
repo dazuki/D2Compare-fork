@@ -1,4 +1,9 @@
+## Main Screenshot
+
 ![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_both.png)
+
+## Datagrid Screenshot
+
 ![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_datagrid.png)
 
 This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
