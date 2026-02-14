@@ -5,7 +5,7 @@
         xmlns:ti="using:TablerIcons"
         x:Class="D2Compare.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="{Binding AppVersion, StringFormat='D2Compare-fork v{0}'}"
+        Title="{Binding AppVersion, StringFormat='D2Compare-fork v{0} (fork by dazuki)'}"
         MinWidth="1110" MinHeight="380"
         Icon="/Assets/compare_yRb_icon.ico"
         Background="{DynamicResource WindowBackgroundBrush}">

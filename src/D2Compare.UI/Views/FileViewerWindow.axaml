@@ -12,10 +12,11 @@
                           IsChecked="False" />
                 <TextBox x:Name="SearchBox"
                          Width="150"
-                         Watermark="Row # + Enter" />
+                         Watermark="Row # + Enter"
+                         Padding="8,8" />
                 <ToggleButton x:Name="SearchModeToggle"
                               Content="Row"
-                              Padding="6,4" />
+                              Padding="8,8" />
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <CheckBox x:Name="CopyRowCheckBox"

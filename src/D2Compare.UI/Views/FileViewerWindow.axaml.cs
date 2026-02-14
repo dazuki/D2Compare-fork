@@ -52,7 +52,7 @@ public partial class FileViewerWindow : Window
         // Row number column (always frozen)
         var rowNumCol = new DataGridTextColumn
         {
-            Header = "#",
+            Header = "(Row)",
             Binding = new Binding("[0]"),
             IsReadOnly = true
         };
