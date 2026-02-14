@@ -1,45 +1,51 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="D2Compare.Views.FileViewerWindow"
-        Width="1000" Height="600"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource WindowBackgroundBrush}">
+<Window
+    x:Class="D2Compare.Views.FileViewerWindow"
+    xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="1000" Height="600"
+    Background="{DynamicResource WindowBackgroundBrush}"
+    WindowStartupLocation="CenterOwner">
     <DockPanel>
-        <Grid DockPanel.Dock="Top" Margin="8,4" ColumnDefinitions="Auto,*,Auto">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <CheckBox x:Name="FreezeCheckBox"
-                          Content="Lock First"
-                          IsChecked="False" />
-                <TextBox x:Name="SearchBox"
-                         Width="150"
-                         Watermark="Row # + Enter"
-                         Padding="8,8" />
-                <ToggleButton x:Name="SearchModeToggle"
-                              Content="Row"
-                              Padding="8,8" />
+        <Grid
+            Margin="8,4"
+            ColumnDefinitions="Auto,*,Auto" DockPanel.Dock="Top">
+            <StackPanel
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal" Spacing="8">
+                <CheckBox
+                    x:Name="FreezeCheckBox"
+                    Content="Lock First" IsChecked="False" />
+                <TextBox
+                    x:Name="SearchBox"
+                    Width="150"
+                    Padding="8,8"
+                    Watermark="Row # + Enter" />
+                <ToggleButton
+                    x:Name="SearchModeToggle"
+                    Padding="8,8"
+                    Content="Row" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <CheckBox x:Name="CopyRowCheckBox"
-                          Content="Copy Entire Row"
-                          IsChecked="False" />
-                <CheckBox x:Name="IncludeHeaderCheckBox"
-                          Content="Include Headers"
-                          IsChecked="False"
-                          IsEnabled="{Binding #CopyRowCheckBox.IsChecked}" />
+            <StackPanel
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Orientation="Horizontal" Spacing="8">
+                <CheckBox
+                    x:Name="CopyRowCheckBox"
+                    Content="Copy Entire Row" IsChecked="False" />
+                <CheckBox
+                    x:Name="IncludeHeaderCheckBox"
+                    Content="Include Headers" IsChecked="False"
+                    IsEnabled="{Binding #CopyRowCheckBox.IsChecked}" />
             </StackPanel>
         </Grid>
-        <DataGrid x:Name="Grid"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserReorderColumns="True"
-                  CanUserResizeColumns="True"
-                  CanUserSortColumns="False"
-                  SelectionMode="Extended"
-                  ClipboardCopyMode="None"
-                  GridLinesVisibility="All"
-                  BorderThickness="0"
-                  FontFamily="{StaticResource MonoFont}"
-                  FrozenColumnCount="1">
+        <DataGrid
+            x:Name="Grid"
+            AutoGenerateColumns="False" BorderThickness="0"
+            CanUserReorderColumns="True" CanUserResizeColumns="True"
+            CanUserSortColumns="False" ClipboardCopyMode="None"
+            FontFamily="{StaticResource MonoFont}"
+            FrozenColumnCount="1" GridLinesVisibility="All"
+            IsReadOnly="True" SelectionMode="Extended">
             <DataGrid.Styles>
                 <Style Selector="DataGridColumnHeader">
                     <Setter Property="FontWeight" Value="Normal" />
