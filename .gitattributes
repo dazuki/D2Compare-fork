@@ -1,0 +1,26 @@
+# Normalize all text files to LF in the repo, native on checkout
+* text=auto
+
+# Source code — always LF in repo
+*.cs text diff=csharp
+*.csproj text
+*.slnx text
+*.axaml text
+*.xaml text
+*.json text
+*.md text
+
+# D2 game data files — always CRLF (D2R requires Windows line endings)
+*.txt text eol=crlf
+
+# Scripts
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary
+*.png binary
+*.ico binary
+*.ttf binary
+*.otf binary
