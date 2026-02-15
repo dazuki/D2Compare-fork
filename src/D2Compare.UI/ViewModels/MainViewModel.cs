@@ -66,6 +66,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [ObservableProperty] private string _statusText = "";
+    [ObservableProperty] private bool _isStatusWarning;
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private string _activeSearchTerm = "";
     [ObservableProperty] private string _matchLabel = "";
@@ -119,16 +120,35 @@ public partial class MainViewModel : ObservableObject
 
         var customIndex = VersionInfo.BuiltInVersions.Length;
 
-        // Restore custom paths before setting indices
-        if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
+        // Restore custom paths before setting indices (only if directory still exists)
+        if (!string.IsNullOrEmpty(_settings.CustomSourcePath) && Directory.Exists(_settings.CustomSourcePath))
         {
             _sourceFolderPath = _settings.CustomSourcePath;
             SourceVersions[customIndex] = _settings.CustomSourcePath;
         }
-        if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
+        else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
+        {
+            _settings.CustomSourcePath = "";
+            if (_settings.SelectedSourceIndex == customIndex)
+                _settings.SelectedSourceIndex = -1;
+            _settings.Save();
+            StatusText = $"Custom source folder no longer exists";
+            IsStatusWarning = true;
+        }
+
+        if (!string.IsNullOrEmpty(_settings.CustomTargetPath) && Directory.Exists(_settings.CustomTargetPath))
         {
             _targetFolderPath = _settings.CustomTargetPath;
             TargetVersions[customIndex] = _settings.CustomTargetPath;
+        }
+        else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
+        {
+            _settings.CustomTargetPath = "";
+            if (_settings.SelectedTargetIndex == customIndex)
+                _settings.SelectedTargetIndex = -1;
+            _settings.Save();
+            StatusText = $"Custom target folder no longer exists";
+            IsStatusWarning = true;
         }
 
         if (_settings.SelectedSourceIndex >= 0 && _settings.SelectedSourceIndex < SourceVersions.Count)
@@ -221,8 +241,15 @@ public partial class MainViewModel : ObservableObject
     private async Task BatchLoad()
     {
         if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0) return;
+        if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath))
+        {
+            StatusText = "One or both folder paths no longer exist";
+            IsStatusWarning = true;
+            return;
+        }
 
         IsLoading = true;
+        IsStatusWarning = false;
         StatusText = "Loading...";
 
         try
@@ -259,11 +286,19 @@ public partial class MainViewModel : ObservableObject
         if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0)
         {
             StatusText = "Select source and target folders first";
+            IsStatusWarning = true;
+            return;
+        }
+        if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath))
+        {
+            StatusText = "One or both folder paths no longer exist";
+            IsStatusWarning = true;
             return;
         }
         if (!ConvertColumns)
         {
             StatusText = "Select at least one conversion option (columns)";
+            IsStatusWarning = true;
             return;
         }
 
@@ -377,6 +412,7 @@ public partial class MainViewModel : ObservableObject
         if (!File.Exists(sourcePath) || !File.Exists(targetPath))
         {
             StatusText = "File not found";
+            IsStatusWarning = true;
             return;
         }
 
@@ -418,6 +454,8 @@ public partial class MainViewModel : ObservableObject
         if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0) return;
         if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath)) return;
 
+        IsStatusWarning = false;
+        StatusText = "";
         var fileResult = FileDiscovery.DiscoverFiles(_sourceFolderPath, _targetFolderPath);
 
         FileList = new ObservableCollection<string>(fileResult.CommonFiles);

@@ -290,9 +290,18 @@
                     <TextBlock
                         Grid.Column="1"
                         VerticalAlignment="Top"
-                        Foreground="Gray"
                         TextWrapping="Wrap"
-                        Text="{Binding StatusText}" />
+                        Classes.warning="{Binding IsStatusWarning}"
+                        Text="{Binding StatusText}">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock:not(.warning)">
+                                <Setter Property="Foreground" Value="Gray" />
+                            </Style>
+                            <Style Selector="TextBlock.warning">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
                 </Grid>
             </StackPanel>
 
