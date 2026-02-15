@@ -9,6 +9,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>none</DebugType>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

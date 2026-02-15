@@ -484,22 +484,75 @@
                 </StackPanel>
             </Border>
         </Grid>
-        <!--  Attribution  -->
-        <Button
+        <!--  Bottom Bar  -->
+        <Grid
             Grid.Row="2"
-            Margin="0,0,8,4" Padding="4,2"
-            HorizontalAlignment="Right"
-            Background="Transparent" BorderThickness="0"
-            Command="{Binding OpenOriginalProjectCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <ti:TablerIcon
-                    Width="14" Height="14"
-                    Brush="{DynamicResource IconForegroundBrush}"
-                    Icon="IconBrandGithubFilled" StrokeWidth="2" />
+            Margin="8,0,8,4"
+            ColumnDefinitions="*,Auto">
+
+            <!--  Update notification (left)  -->
+            <StackPanel
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                IsVisible="{Binding HasPendingUpdate}"
+                Orientation="Horizontal" Spacing="8">
+                <Button
+                    Padding="4,2"
+                    Background="Transparent" BorderThickness="0"
+                    Command="{Binding ApplyUpdateCommand}"
+                    IsEnabled="{Binding !IsDownloadingUpdate}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ti:TablerIcon
+                            Width="14" Height="14"
+                            Brush="{DynamicResource StatAddedBrush}"
+                            Icon="IconDownload" StrokeWidth="2" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Foreground="{DynamicResource StatAddedBrush}"
+                            Text="{Binding UpdateAvailableText}" />
+                    </StackPanel>
+                </Button>
+                <ProgressBar
+                    Width="120" Height="8"
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding IsDownloadingUpdate}"
+                    Maximum="1.0" Minimum="0.0"
+                    Value="{Binding UpdateDownloadProgress}" />
                 <TextBlock
                     VerticalAlignment="Center"
-                    FontSize="13" Text="Original by locbones" />
+                    FontSize="12" Foreground="Gray"
+                    IsVisible="{Binding IsDownloadingUpdate}"
+                    Text="{Binding UpdateStatusText}" />
+                <Button
+                    Padding="2"
+                    Background="Transparent" BorderThickness="0"
+                    Command="{Binding DismissUpdateCommand}"
+                    IsEnabled="{Binding !IsDownloadingUpdate}"
+                    ToolTip.Tip="Dismiss">
+                    <ti:TablerIcon
+                        Width="12" Height="12"
+                        Brush="Gray"
+                        Icon="IconX" StrokeWidth="2" />
+                </Button>
             </StackPanel>
-        </Button>
+
+            <!--  Attribution (right)  -->
+            <Button
+                Grid.Column="1"
+                Padding="4,2"
+                Background="Transparent" BorderThickness="0"
+                Command="{Binding OpenOriginalProjectCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ti:TablerIcon
+                        Width="14" Height="14"
+                        Brush="{DynamicResource IconForegroundBrush}"
+                        Icon="IconBrandGithubFilled" StrokeWidth="2" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="13" Text="Original by locbones" />
+                </StackPanel>
+            </Button>
+        </Grid>
     </Grid>
 </Window>

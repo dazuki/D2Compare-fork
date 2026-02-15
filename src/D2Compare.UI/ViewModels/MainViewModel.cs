@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using D2Compare.Core.Models;
 using D2Compare.Core.Services;
+using D2Compare.Services;
 using D2Compare.Views;
 
 namespace D2Compare.ViewModels;
@@ -99,9 +100,25 @@ public partial class MainViewModel : ObservableObject
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
 
-    public string AppVersion => "2.0.4";
+    public string AppVersion => UpdateService.GetCurrentVersion();
     public bool IsSourceCustom => SelectedSourceIndex >= VersionInfo.BuiltInVersions.Length;
     public bool IsTargetCustom => SelectedTargetIndex >= VersionInfo.BuiltInVersions.Length;
+
+    // Auto-update
+    [ObservableProperty] private UpdateInfo? _pendingUpdate;
+    [ObservableProperty] private bool _isDownloadingUpdate;
+    [ObservableProperty] private double _updateDownloadProgress;
+    [ObservableProperty] private string _updateStatusText = "";
+
+    public bool HasPendingUpdate => PendingUpdate is not null;
+    public string UpdateAvailableText =>
+        PendingUpdate is null ? "" : $"Update available: {PendingUpdate.TagName}";
+
+    partial void OnPendingUpdateChanged(UpdateInfo? value)
+    {
+        OnPropertyChanged(nameof(HasPendingUpdate));
+        OnPropertyChanged(nameof(UpdateAvailableText));
+    }
 
     public MainViewModel(TopLevel topLevel)
     {
@@ -161,6 +178,9 @@ public partial class MainViewModel : ObservableObject
             if (_settings.SelectedTargetIndex < customIndex || !string.IsNullOrEmpty(_settings.CustomTargetPath))
                 SelectedTargetIndex = _settings.SelectedTargetIndex;
         }
+
+        if (!_settings.DisableUpdateCheck)
+            _ = CheckForUpdateAsync();
     }
 
     partial void OnSelectedSourceIndexChanged(int value)
@@ -530,6 +550,41 @@ public partial class MainViewModel : ObservableObject
 
         MatchLabel = count > 0 ? $"{count} matches" : "0 matches";
     }
+
+    private async Task CheckForUpdateAsync()
+    {
+        var info = await UpdateService.CheckForUpdateAsync();
+        if (info is not null)
+            PendingUpdate = info;
+    }
+
+    [RelayCommand]
+    private async Task ApplyUpdate()
+    {
+        if (PendingUpdate is null) return;
+
+        IsDownloadingUpdate = true;
+        UpdateStatusText = "Downloading...";
+        var progress = new Progress<double>(p =>
+        {
+            UpdateDownloadProgress = p;
+            UpdateStatusText = $"Downloading... {p:P0}";
+        });
+
+        var stagingDir = await UpdateService.DownloadUpdateAsync(PendingUpdate, progress);
+        if (stagingDir is null)
+        {
+            UpdateStatusText = "Download failed";
+            IsDownloadingUpdate = false;
+            return;
+        }
+
+        UpdateStatusText = "Applying update...";
+        UpdateService.LaunchUpdateScriptAndExit(stagingDir);
+    }
+
+    [RelayCommand]
+    private void DismissUpdate() => PendingUpdate = null;
 
     private static void OpenUrl(string url) =>
         Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });

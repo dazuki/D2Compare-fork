@@ -26,6 +26,8 @@ public class AppSettings
     public double Column2Star { get; set; } = 1.0;
     public double Column4Star { get; set; } = 1.5;
 
+    public bool DisableUpdateCheck { get; set; }
+
     public static AppSettings Load()
     {
         try
