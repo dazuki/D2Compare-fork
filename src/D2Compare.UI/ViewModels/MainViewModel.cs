@@ -209,6 +209,8 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedFileIndexChanged(int value)
     {
+        OpenSourceFileCommand.NotifyCanExecuteChanged();
+        OpenTargetFileCommand.NotifyCanExecuteChanged();
         if (value < 0 || value >= FileList.Count) return;
         BatchReloadNeeded = false;
         RunSingleComparison();
@@ -374,19 +376,19 @@ public partial class MainViewModel : ObservableObject
     private static void OpenOriginalProject() =>
         OpenUrl("https://github.com/locbones/D2Compare");
 
-    [RelayCommand]
+    private bool HasFileSelected() => SelectedFileIndex >= 0 && SelectedFileIndex < FileList.Count;
+
+    [RelayCommand(CanExecute = nameof(HasFileSelected))]
     private void OpenSourceFile()
     {
-        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
         var path = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
         var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
         OpenFileViewer(path, label);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasFileSelected))]
     private void OpenTargetFile()
     {
-        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
         var path = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
         var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
         OpenFileViewer(path, label);

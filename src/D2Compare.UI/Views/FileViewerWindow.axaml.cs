@@ -41,9 +41,77 @@ public partial class FileViewerWindow : Window
         SearchBox.KeyDown += OnSearchKeyDown;
     }
 
+    private static string DetectLineEndings(string filePath)
+    {
+        using var stream = File.OpenRead(filePath);
+        int b;
+        while ((b = stream.ReadByte()) != -1)
+        {
+            if (b == '\r')
+            {
+                var next = stream.ReadByte();
+                return next == '\n' ? "CRLF" : "CR";
+            }
+            if (b == '\n')
+                return "LF";
+        }
+        return "N/A";
+    }
+
+    private static (Encoding encoding, string name) DetectEncoding(string filePath)
+    {
+        var bytes = File.ReadAllBytes(filePath);
+
+        // Check for BOM markers
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            return (new UTF8Encoding(true), "UTF-8 (BOM)");
+        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            return (Encoding.Unicode, "UTF-16 LE (BOM)");
+        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            return (Encoding.BigEndianUnicode, "UTF-16 BE (BOM)");
+
+        // No BOM — check if content is valid UTF-8
+        bool hasHighBytes = false;
+        bool validUtf8 = true;
+        int i = 0;
+        while (i < bytes.Length)
+        {
+            byte b = bytes[i];
+            if (b <= 0x7F) { i++; continue; }
+
+            hasHighBytes = true;
+            int expected;
+            if ((b & 0xE0) == 0xC0) expected = 1;
+            else if ((b & 0xF0) == 0xE0) expected = 2;
+            else if ((b & 0xF8) == 0xF0) expected = 3;
+            else { validUtf8 = false; break; }
+
+            for (int j = 0; j < expected; j++)
+            {
+                i++;
+                if (i >= bytes.Length || (bytes[i] & 0xC0) != 0x80) { validUtf8 = false; break; }
+            }
+            if (!validUtf8) break;
+            i++;
+        }
+
+        if (!hasHighBytes)
+            return (new UTF8Encoding(false), "ASCII / UTF-8 (no BOM)");
+        if (validUtf8)
+            return (new UTF8Encoding(false), "UTF-8 (no BOM)");
+
+        return (Encoding.GetEncoding(1252), "Windows-1252");
+    }
+
     private void LoadTsv(string filePath)
     {
-        var lines = File.ReadAllLines(filePath);
+        var (encoding, encodingName) = DetectEncoding(filePath);
+        EncodingLabel.Text = encodingName;
+
+        var lineEndingType = DetectLineEndings(filePath);
+        EncodingLabel.Text = $"{encodingName} | {lineEndingType}";
+
+        var lines = File.ReadAllLines(filePath, encoding);
         if (lines.Length == 0) return;
 
         var headers = lines[0].Split('\t');
