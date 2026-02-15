@@ -37,6 +37,34 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _batchReloadNeeded;
     [ObservableProperty] private bool _isDarkMode;
 
+    [ObservableProperty] private bool _convertColumns = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRowModeNone))]
+    [NotifyPropertyChangedFor(nameof(IsRowModeAppendOriginal))]
+    [NotifyPropertyChangedFor(nameof(IsRowModeAppendTarget))]
+    private RowConversionMode _rowConversionMode = RowConversionMode.None;
+
+    // No row conversion (keep source rows)
+    public bool IsRowModeNone
+    {
+        get => RowConversionMode == RowConversionMode.None;
+        set { if (value) RowConversionMode = RowConversionMode.None; }
+    }
+
+    // Append original data at end
+    public bool IsRowModeAppendOriginal
+    {
+        get => RowConversionMode == RowConversionMode.AppendOriginalAtEnd;
+        set { if (value) RowConversionMode = RowConversionMode.AppendOriginalAtEnd; }
+    }
+
+    // Append target data at end
+    public bool IsRowModeAppendTarget
+    {
+        get => RowConversionMode == RowConversionMode.AppendTargetAtEnd;
+        set { if (value) RowConversionMode = RowConversionMode.AppendTargetAtEnd; }
+    }
+
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private string _activeSearchTerm = "";
@@ -70,7 +98,7 @@ public partial class MainViewModel : ObservableObject
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
 
-    public string AppVersion => "2.0.2";
+    public string AppVersion => "2.0.3";
     public bool IsSourceCustom => SelectedSourceIndex >= VersionInfo.BuiltInVersions.Length;
     public bool IsTargetCustom => SelectedTargetIndex >= VersionInfo.BuiltInVersions.Length;
 
@@ -224,6 +252,56 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void BrowseTargetCustom() => _ = SelectCustomFolder(isSource: false);
+
+    [RelayCommand]
+    private async Task ConvertToTarget()
+    {
+        if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0)
+        {
+            StatusText = "Select source and target folders first";
+            return;
+        }
+        if (!ConvertColumns)
+        {
+            StatusText = "Select at least one conversion option (columns)";
+            return;
+        }
+
+        var storage = _topLevel.StorageProvider;
+        if (!storage.CanPickFolder) return;
+
+        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Output Folder for Converted Files",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count == 0) return;
+
+        var outputPath = folders[0].Path.LocalPath;
+        IsLoading = true;
+        StatusText = "Converting...";
+
+        try
+        {
+            ConvertService.ConvertFolder(
+                _sourceFolderPath,
+                _targetFolderPath,
+                outputPath,
+                ConvertColumns,
+                RowConversionMode,
+                name => StatusText = $"Converting {name}...");
+            StatusText = $"Done. Files written to {outputPath}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
 
     [RelayCommand]
     private void ToggleTheme()

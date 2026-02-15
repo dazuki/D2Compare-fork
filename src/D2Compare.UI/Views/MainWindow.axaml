@@ -22,7 +22,7 @@
                 Grid.Column="0"
                 Margin="0,0,20,0"
                 ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10"
-                RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                 <StackPanel
                     Grid.Row="0" Grid.Column="0"
                     VerticalAlignment="Center"
@@ -172,12 +172,58 @@
                         IsChecked="{Binding ShowOnlyNewRows}"
                         IsEnabled="{Binding IncludeNewRows}" />
                 </StackPanel>
+
+                <!--  Convert to target: options + button  -->
+                <StackPanel
+                    Grid.Row="5" Grid.Column="0"
+                    Grid.ColumnSpan="3"
+                    Margin="0,8,0,0"
+                    Orientation="Horizontal" Spacing="16">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontWeight="SemiBold"
+                        Text="Convert to target:" />
+                    <CheckBox
+                        VerticalAlignment="Center"
+                        Content="Columns"
+                        IsChecked="{Binding ConvertColumns}" />
+                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Rows:" />
+                    <StackPanel VerticalAlignment="Center" Orientation="Vertical" Spacing="2">
+                        <RadioButton
+                            GroupName="RowConversionMode"
+                            Content="None"
+                            IsChecked="{Binding IsRowModeNone}" />
+                        <RadioButton
+                            GroupName="RowConversionMode"
+                            Content="Append original data at end"
+                            IsChecked="{Binding IsRowModeAppendOriginal}" />
+                        <RadioButton
+                            GroupName="RowConversionMode"
+                            Content="Append target data at end"
+                            IsChecked="{Binding IsRowModeAppendTarget}" />
+                    </StackPanel>
+                    <Button
+                        Padding="8,4"
+                        Command="{Binding ConvertToTargetCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ti:TablerIcon
+                                Width="16" Height="16"
+                                Brush="{DynamicResource IconForegroundBrush}"
+                                Icon="IconFileExport" StrokeWidth="2" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Text="Convert all .txt to target..." />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!--  Right: File Summary + Search  -->
             <StackPanel
                 Grid.Column="1"
                 VerticalAlignment="Top"
+                MaxWidth="320"
                 Spacing="6">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <StackPanel
@@ -239,13 +285,15 @@
                             StrokeWidth="2" />
                     </TextBox.InnerLeftContent>
                 </TextBox>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock VerticalAlignment="Center" Text="{Binding MatchLabel}" />
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0" Text="{Binding MatchLabel}" />
                     <TextBlock
-                        VerticalAlignment="Center"
+                        Grid.Column="1"
+                        VerticalAlignment="Top"
                         Foreground="Gray"
+                        TextWrapping="Wrap"
                         Text="{Binding StatusText}" />
-                </StackPanel>
+                </Grid>
             </StackPanel>
 
         </Grid>
