@@ -189,6 +189,8 @@ public partial class MainViewModel : ObservableObject
 
         if (value < VersionInfo.BuiltInVersions.Length)
             _sourceFolderPath = VersionInfo.BuiltInVersions[value].GetPath();
+        else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
+            _sourceFolderPath = _settings.CustomSourcePath;
 
         _settings.SelectedSourceIndex = value;
         _settings.Save();
@@ -201,6 +203,8 @@ public partial class MainViewModel : ObservableObject
 
         if (value < VersionInfo.BuiltInVersions.Length)
             _targetFolderPath = VersionInfo.BuiltInVersions[value].GetPath();
+        else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
+            _targetFolderPath = _settings.CustomTargetPath;
 
         _settings.SelectedTargetIndex = value;
         _settings.Save();

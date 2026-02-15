@@ -33,7 +33,7 @@
                     x:Name="EncodingLabel"
                     VerticalAlignment="Center"
                     FontSize="11" Foreground="Gray"
-                    IsVisible="False" />
+                    IsVisible="True" />
                 <CheckBox
                     x:Name="CopyRowCheckBox"
                     Content="Copy Entire Row" IsChecked="False" />
@@ -54,6 +54,7 @@
             <DataGrid.Styles>
                 <Style Selector="DataGridColumnHeader">
                     <Setter Property="FontWeight" Value="Normal" />
+                    <Setter Property="Padding" Value="0 0 0 0" />
                 </Style>
                 <Style Selector="DataGridCell">
                     <Setter Property="FontWeight" Value="Normal" />
