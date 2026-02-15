@@ -19,6 +19,8 @@
                     <SolidColorBrush x:Key="StatRemovedBrush" Color="Red" />
                     <SolidColorBrush x:Key="StatChangedBrush" Color="#191970" />
                     <SolidColorBrush x:Key="FrozenColumnBrush" Color="#E8E8E8" />
+                    <SolidColorBrush x:Key="LinkBrush" Color="#1a6db5" />
+                    <SolidColorBrush x:Key="LinkHoverBrush" Color="#1a8fe6" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="IconForegroundBrush" Color="White" />
@@ -29,6 +31,8 @@
                     <SolidColorBrush x:Key="StatRemovedBrush" Color="#FF6464" />
                     <SolidColorBrush x:Key="StatChangedBrush" Color="#4169E1" />
                     <SolidColorBrush x:Key="FrozenColumnBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="LinkBrush" Color="#5aafff" />
+                    <SolidColorBrush x:Key="LinkHoverBrush" Color="#8acbff" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <controls:IntToBoolConverter x:Key="IntToBool" />

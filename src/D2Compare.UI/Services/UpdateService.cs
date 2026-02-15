@@ -13,7 +13,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 
 namespace D2Compare.Services;
 
-public record UpdateInfo(string TagName, string Version, string DownloadUrl);
+public record UpdateInfo(string TagName, string Version, string DownloadUrl, string ReleaseNotes);
 
 public class UpdateService
 {
@@ -53,13 +53,17 @@ public class UpdateService
                 ? "-win-x64.zip"
                 : "-linux-x64.tar.gz";
 
+            var body = root.TryGetProperty("body", out var bodyProp)
+                ? bodyProp.GetString() ?? ""
+                : "";
+
             foreach (var asset in root.GetProperty("assets").EnumerateArray())
             {
                 var name = asset.GetProperty("name").GetString() ?? "";
                 if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
                 {
                     var url = asset.GetProperty("browser_download_url").GetString() ?? "";
-                    return new UpdateInfo(tag, versionStr, url);
+                    return new UpdateInfo(tag, versionStr, url, body);
                 }
             }
         }

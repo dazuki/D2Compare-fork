@@ -563,6 +563,10 @@ public partial class MainViewModel : ObservableObject
     {
         if (PendingUpdate is null) return;
 
+        var dialog = new UpdateDialog(PendingUpdate.Version, PendingUpdate.ReleaseNotes);
+        var result = await dialog.ShowDialog<bool?>((Window)_topLevel);
+        if (result is not true) return;
+
         IsDownloadingUpdate = true;
         UpdateStatusText = "Downloading...";
         var progress = new Progress<double>(p =>

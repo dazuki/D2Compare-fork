@@ -19,6 +19,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Markdown.Avalonia.Tight" Version="11.0.2" />
     <PackageReference Include="TablerIcons.Avalonia" Version="3.34.0" />
   </ItemGroup>
 
