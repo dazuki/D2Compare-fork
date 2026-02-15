@@ -99,7 +99,7 @@ public partial class MainViewModel : ObservableObject
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
 
-    public string AppVersion => "2.0.3";
+    public string AppVersion => "2.0.4";
     public bool IsSourceCustom => SelectedSourceIndex >= VersionInfo.BuiltInVersions.Length;
     public bool IsTargetCustom => SelectedTargetIndex >= VersionInfo.BuiltInVersions.Length;
 
