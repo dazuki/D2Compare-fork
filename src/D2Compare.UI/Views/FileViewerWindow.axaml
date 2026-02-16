@@ -5,6 +5,21 @@
     Background="{DynamicResource WindowBackgroundBrush}"
     WindowStartupLocation="CenterOwner">
     <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="SaveMenuItem" Header="_Save" InputGesture="Ctrl+S" />
+                <MenuItem x:Name="SaveAsMenuItem" Header="Save _As..." InputGesture="Ctrl+Shift+S" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem x:Name="LockFirstMenuItem" Header="_Lock First Column" />
+            </MenuItem>
+            <MenuItem Header="_Copy">
+                <MenuItem x:Name="CopyCellsMenuItem" Header="Copy _Cell(s)" InputGesture="Ctrl+C" />
+                <MenuItem x:Name="CopyRowsMenuItem" Header="Copy _Row(s)" InputGesture="Ctrl+Shift+C" />
+                <Separator />
+                <MenuItem x:Name="IncludeHeadersMenuItem" Header="_Include Headers" Icon="{x:Null}" />
+            </MenuItem>
+        </Menu>
         <Grid
             Margin="8,4"
             ColumnDefinitions="Auto,*,Auto" DockPanel.Dock="Top">
@@ -12,36 +27,25 @@
                 Grid.Column="0"
                 VerticalAlignment="Center"
                 Orientation="Horizontal" Spacing="8">
-                <CheckBox
-                    x:Name="FreezeCheckBox"
-                    Content="Lock First" IsChecked="False" />
                 <TextBox
                     x:Name="SearchBox"
                     Width="150"
                     Padding="8,8"
-                    Watermark="Row # + Enter" />
-                <ToggleButton
-                    x:Name="SearchModeToggle"
-                    Padding="8,8"
-                    Content="Row" />
-            </StackPanel>
-            <StackPanel
-                Grid.Column="2"
-                VerticalAlignment="Center"
-                Orientation="Horizontal" Spacing="8">
+                    Watermark="Search + Enter" />
                 <TextBlock
-                    x:Name="EncodingLabel"
                     VerticalAlignment="Center"
-                    FontSize="11" Foreground="Gray"
-                    IsVisible="True" />
-                <CheckBox
-                    x:Name="CopyRowCheckBox"
-                    Content="Copy Entire Row" IsChecked="False" />
-                <CheckBox
-                    x:Name="IncludeHeaderCheckBox"
-                    Content="Include Headers" IsChecked="False"
-                    IsEnabled="{Binding #CopyRowCheckBox.IsChecked}" />
+                    Text="Search in:" />
+                <ComboBox
+                    x:Name="SearchColumnCombo"
+                    Padding="8,8"
+                    SelectedIndex="0" />
             </StackPanel>
+            <TextBlock
+                Grid.Column="2"
+                x:Name="EncodingLabel"
+                VerticalAlignment="Center"
+                FontSize="11" Foreground="Gray"
+                IsVisible="True" />
         </Grid>
         <DataGrid
             x:Name="Grid"
@@ -50,11 +54,10 @@
             CanUserSortColumns="False" ClipboardCopyMode="None"
             FontFamily="{StaticResource MonoFont}"
             FrozenColumnCount="1" GridLinesVisibility="All"
-            IsReadOnly="True" SelectionMode="Extended">
+            IsReadOnly="False" SelectionMode="Extended">
             <DataGrid.Styles>
                 <Style Selector="DataGridColumnHeader">
                     <Setter Property="FontWeight" Value="Normal" />
-                    <Setter Property="Padding" Value="0 0 0 0" />
                 </Style>
                 <Style Selector="DataGridCell">
                     <Setter Property="FontWeight" Value="Normal" />

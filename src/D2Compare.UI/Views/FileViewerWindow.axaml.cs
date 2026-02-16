@@ -9,6 +9,10 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Platform.Storage;
+using Avalonia.Styling;
+using Avalonia.Threading;
 
 namespace D2Compare.Views;
 
@@ -16,8 +20,18 @@ public partial class FileViewerWindow : Window
 {
     private DataGridTextColumn? _firstDataColumn;
     private List<string[]>? _rows;
-    private string _firstColumnHeader = "";
+    private string[] _headers = [];
+    private Encoding _fileEncoding = Encoding.UTF8;
+    private string _filePath = "";
+    private string _originalFileName = "";
+    private const int SearchAnyColumn = 0;
+    private const int SearchRowNumber = 1;
+    private const int SearchColumnOffset = 3; // after Any, Row#, separator
+    private string[][]? _originalRows;
+    private bool _lockFirstColumn;
+    private bool _includeHeaders;
     private int _lastSearchIndex = -1;
+    private DataGridCell? _highlightedCell;
 
     public FileViewerWindow()
     {
@@ -29,16 +43,27 @@ public partial class FileViewerWindow : Window
         Title = string.IsNullOrEmpty(label)
             ? Path.GetFileName(filePath)
             : $"{Path.GetFileName(filePath)} - {label}";
+        CreateBackupIfNeeded(filePath);
         LoadTsv(filePath);
-        FreezeCheckBox.IsCheckedChanged += (_, _) => UpdateFrozenState();
-        CopyRowCheckBox.IsCheckedChanged += (_, _) =>
-        {
-            if (CopyRowCheckBox.IsChecked != true)
-                IncludeHeaderCheckBox.IsChecked = false;
-        };
-        SearchModeToggle.IsCheckedChanged += OnSearchModeChanged;
+        LockFirstMenuItem.Click += OnLockFirstClick;
+        SearchColumnCombo.SelectionChanged += OnSearchColumnChanged;
         Grid.KeyDown += OnGridKeyDown;
         SearchBox.KeyDown += OnSearchKeyDown;
+        SearchBox.TextChanged += OnSearchTextChanged;
+        SaveMenuItem.Click += OnSaveClick;
+        SaveAsMenuItem.Click += OnSaveAsClick;
+        CopyCellsMenuItem.Click += (_, _) => CopyToClipboard(copyRows: false);
+        CopyRowsMenuItem.Click += (_, _) => CopyToClipboard(copyRows: true);
+        IncludeHeadersMenuItem.Click += OnIncludeHeadersClick;
+        Grid.LoadingRow += OnLoadingRow;
+        Grid.CellEditEnding += OnCellEditEnding;
+    }
+
+    private static void CreateBackupIfNeeded(string filePath)
+    {
+        var backupPath = filePath + ".backup";
+        if (!File.Exists(backupPath))
+            File.Copy(filePath, backupPath);
     }
 
     private static string DetectLineEndings(string filePath)
@@ -115,7 +140,11 @@ public partial class FileViewerWindow : Window
         if (lines.Length == 0) return;
 
         var headers = lines[0].Split('\t');
-        _firstColumnHeader = headers[0];
+        _headers = headers;
+        _fileEncoding = encoding;
+        _filePath = filePath;
+        _originalFileName = Path.GetFileName(filePath);
+        PopulateSearchCombo(headers);
 
         // Row number column (always frozen)
         var rowNumCol = new DataGridTextColumn
@@ -136,14 +165,14 @@ public partial class FileViewerWindow : Window
         };
         Grid.Columns.Add(_firstDataColumn);
 
-        // Remaining columns
+        // Remaining columns (editable)
         for (int i = 1; i < headers.Length; i++)
         {
             Grid.Columns.Add(new DataGridTextColumn
             {
                 Header = headers[i],
-                Binding = new Binding($"[{i + 1}]"),
-                IsReadOnly = true
+                Binding = new Binding($"[{i + 1}]") { Mode = BindingMode.TwoWay },
+                IsReadOnly = false
             });
         }
 
@@ -158,23 +187,50 @@ public partial class FileViewerWindow : Window
             _rows.Add(row);
         }
 
+        _originalRows = LoadBackupRows(filePath, encoding);
         Grid.ItemsSource = _rows;
     }
 
-    private async void OnGridKeyDown(object? sender, KeyEventArgs e)
+    private static string[][] LoadBackupRows(string filePath, Encoding encoding)
+    {
+        var backupPath = filePath + ".backup";
+        var path = File.Exists(backupPath) ? backupPath : filePath;
+        var lines = File.ReadAllLines(path, encoding);
+        if (lines.Length <= 1) return [];
+
+        var headerCount = lines[0].Split('\t').Length;
+        var rows = new string[lines.Length - 1][];
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var values = lines[i].Split('\t');
+            var row = new string[headerCount + 1];
+            row[0] = i.ToString();
+            for (int j = 0; j < headerCount; j++)
+                row[j + 1] = j < values.Length ? values[j] : "";
+            rows[i - 1] = row;
+        }
+        return rows;
+    }
+
+    private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.C || !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
 
+        var copyRows = e.KeyModifiers.HasFlag(KeyModifiers.Shift) || _includeHeaders;
+        CopyToClipboard(copyRows);
+        e.Handled = true;
+    }
+
+    private async void CopyToClipboard(bool copyRows)
+    {
         var selectedRows = Grid.SelectedItems.Cast<string[]>().ToList();
         if (selectedRows.Count == 0) return;
 
         var sb = new StringBuilder();
-        var copyRow = CopyRowCheckBox.IsChecked == true;
-        var includeHeader = IncludeHeaderCheckBox.IsChecked == true;
 
-        if (copyRow)
+        if (copyRows)
         {
-            if (includeHeader)
+            if (_includeHeaders)
             {
                 sb.AppendLine(string.Join('\t',
                     Grid.Columns.Select(c => c.Header?.ToString() ?? "")));
@@ -191,9 +247,6 @@ public partial class FileViewerWindow : Window
             var colIndex = Grid.Columns.IndexOf(col);
             if (colIndex < 0) return;
 
-            if (includeHeader)
-                sb.AppendLine(col.Header?.ToString() ?? "");
-
             foreach (var row in selectedRows)
                 sb.AppendLine(colIndex < row.Length ? row[colIndex] : "");
         }
@@ -201,17 +254,98 @@ public partial class FileViewerWindow : Window
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is not null)
             await clipboard.SetTextAsync(sb.ToString().TrimEnd('\r', '\n'));
-
-        e.Handled = true;
     }
 
-    private void OnSearchModeChanged(object? sender, RoutedEventArgs e)
+    private void OnIncludeHeadersClick(object? sender, RoutedEventArgs e)
     {
-        var byColumn = SearchModeToggle.IsChecked == true;
-        SearchModeToggle.Content = byColumn ? _firstColumnHeader : "Row";
-        SearchBox.Watermark = byColumn ? "Value + Enter" : "Row # + Enter";
+        _includeHeaders = !_includeHeaders;
+        IncludeHeadersMenuItem.Icon = _includeHeaders
+            ? new CheckBox { IsChecked = true, IsHitTestVisible = false }
+            : null;
+        CopyCellsMenuItem.IsEnabled = !_includeHeaders;
+    }
+
+    private void OnLoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        ColorizeRow(e.Row);
+    }
+
+    private void OnCellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction == DataGridEditAction.Cancel) return;
+        // Post to let the two-way binding update the array first
+        Dispatcher.UIThread.Post(() => ColorizeRow(e.Row), DispatcherPriority.Background);
+    }
+
+    private void ColorizeRow(DataGridRow row)
+    {
+        var rowIndex = row.Index;
+        if (_originalRows is null || _rows is null) return;
+        if (rowIndex < 0 || rowIndex >= _rows.Count || rowIndex >= _originalRows.Length) return;
+
+        var current = _rows[rowIndex];
+        var original = _originalRows[rowIndex];
+        var isDark = ActualThemeVariant == ThemeVariant.Dark;
+        IBrush? changedBrush = null;
+
+        // Skip column 0 (row#) and column 1 (first data column - readonly)
+        for (int colIdx = 2; colIdx < Grid.Columns.Count; colIdx++)
+        {
+            var content = Grid.Columns[colIdx].GetCellContent(row);
+            if (content is TextBlock tb)
+            {
+                bool changed = colIdx < current.Length && colIdx < original.Length
+                    && current[colIdx] != original[colIdx];
+                if (changed)
+                {
+                    changedBrush ??= new SolidColorBrush(
+                        isDark ? Color.Parse("#FF8C00") : Color.Parse("#B34700"));
+                    tb.Foreground = changedBrush;
+                    tb.FontWeight = FontWeight.SemiBold;
+                }
+                else
+                {
+                    tb.ClearValue(TextBlock.ForegroundProperty);
+                    tb.ClearValue(TextBlock.FontWeightProperty);
+                }
+            }
+        }
+    }
+
+    private void PopulateSearchCombo(string[] headers)
+    {
+        SearchColumnCombo.Items.Add(new ComboBoxItem { Content = "Any Row/Column" });
+        SearchColumnCombo.Items.Add(new ComboBoxItem { Content = "Row Number" });
+        SearchColumnCombo.Items.Add(new Separator());
+        foreach (var header in headers)
+            SearchColumnCombo.Items.Add(new ComboBoxItem { Content = header });
+        SearchColumnCombo.SelectedIndex = 0;
+    }
+
+    private void OnSearchColumnChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        var idx = SearchColumnCombo.SelectedIndex;
+
+        // Skip separator — jump to next valid item
+        if (idx == 2)
+        {
+            SearchColumnCombo.SelectedIndex = 3;
+            return;
+        }
+
+        SearchBox.Watermark = idx == SearchRowNumber ? "Row # + Enter" : "Search + Enter";
         SearchBox.Text = "";
         _lastSearchIndex = -1;
+        ClearSearchHighlight();
+    }
+
+    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(SearchBox.Text))
+        {
+            _lastSearchIndex = -1;
+            ClearSearchHighlight();
+        }
     }
 
     private void OnSearchKeyDown(object? sender, KeyEventArgs e)
@@ -220,10 +354,13 @@ public partial class FileViewerWindow : Window
         var text = SearchBox.Text;
         if (string.IsNullOrEmpty(text)) return;
 
-        if (SearchModeToggle.IsChecked == true)
-            SearchByFirstColumn(text);
-        else
+        var selectedIdx = SearchColumnCombo.SelectedIndex;
+        if (selectedIdx == SearchRowNumber)
             GoToRow(text);
+        else if (selectedIdx == SearchAnyColumn)
+            SearchColumns(text, null);
+        else
+            SearchColumns(text, selectedIdx - SearchColumnOffset + 1); // +1 for row# prefix in array
     }
 
     private void GoToRow(string text)
@@ -238,35 +375,142 @@ public partial class FileViewerWindow : Window
         SearchBox.Focus();
     }
 
-    private void SearchByFirstColumn(string text)
+    /// <summary>
+    /// Search rows. If colIndex is null, search all columns. Otherwise search specific column.
+    /// colIndex is the array index in _rows (1-based, 0 = row number).
+    /// </summary>
+    private void SearchColumns(string text, int? colIndex)
     {
         if (_rows is null || _rows.Count == 0) return;
 
-        // Search from after the last match to cycle through results
         var startIndex = _lastSearchIndex + 1;
         for (int i = 0; i < _rows.Count; i++)
         {
             var index = (startIndex + i) % _rows.Count;
-            var value = _rows[index][1]; // first data column is at index 1
-            if (value.Contains(text, StringComparison.OrdinalIgnoreCase))
+            var row = _rows[index];
+
+            if (colIndex is int col)
             {
-                _lastSearchIndex = index;
-                Grid.SelectedIndex = index;
-                Grid.ScrollIntoView(_rows[index], null);
-                SearchBox.Focus();
-                return;
+                if (col < row.Length && row[col].Contains(text, StringComparison.OrdinalIgnoreCase))
+                {
+                    SelectAndScroll(index, col);
+                    return;
+                }
+            }
+            else
+            {
+                // Search all data columns (skip index 0 = row number)
+                for (int c = 1; c < row.Length; c++)
+                {
+                    if (row[c].Contains(text, StringComparison.OrdinalIgnoreCase))
+                    {
+                        SelectAndScroll(index, c);
+                        return;
+                    }
+                }
             }
         }
+    }
+
+    private void ClearSearchHighlight()
+    {
+        if (_highlightedCell is not null)
+        {
+            _highlightedCell.ClearValue(DataGridCell.BackgroundProperty);
+            _highlightedCell = null;
+        }
+    }
+
+    private void SelectAndScroll(int index, int? arrayColIndex = null)
+    {
+        ClearSearchHighlight();
+
+        _lastSearchIndex = index;
+        Grid.SelectedIndex = index;
+
+        DataGridColumn? matchedCol = null;
+        if (arrayColIndex is int colIdx && colIdx < Grid.Columns.Count)
+        {
+            matchedCol = Grid.Columns[colIdx];
+            Grid.CurrentColumn = matchedCol;
+        }
+
+        Grid.ScrollIntoView(_rows![index], matchedCol);
+
+        // Highlight the matched cell after scroll completes
+        if (matchedCol is not null)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                var content = matchedCol.GetCellContent(_rows![index]);
+                if (content?.Parent is DataGridCell cell)
+                {
+                    var isDark = ActualThemeVariant == ThemeVariant.Dark;
+                    cell.Background = new SolidColorBrush(
+                        isDark ? Color.Parse("#1A3A2A") : Color.Parse("#D6EED6"));
+                    _highlightedCell = cell;
+                }
+            }, DispatcherPriority.Background);
+        }
+
+        SearchBox.Focus();
+    }
+
+    private void OnSaveClick(object? sender, RoutedEventArgs e)
+    {
+        if (_rows is null || _headers.Length == 0 || string.IsNullOrEmpty(_filePath)) return;
+
+        using var writer = new StreamWriter(_filePath, false, _fileEncoding) { NewLine = "\r\n" };
+        writer.WriteLine(string.Join('\t', _headers));
+        foreach (var row in _rows)
+            writer.WriteLine(string.Join('\t', row.AsSpan(1).ToArray()));
+    }
+
+    private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
+    {
+        if (_rows is null || _headers.Length == 0) return;
+
+        var storage = StorageProvider;
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save a Copy",
+            SuggestedFileName = _originalFileName,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Tab-delimited Text") { Patterns = ["*.txt"] },
+                new FilePickerFileType("All Files") { Patterns = ["*"] }
+            ]
+        });
+
+        if (file is null) return;
+
+        await using var stream = await file.OpenWriteAsync();
+        using var writer = new StreamWriter(stream, _fileEncoding) { NewLine = "\r\n" };
+
+        await writer.WriteLineAsync(string.Join('\t', _headers));
+        foreach (var row in _rows)
+        {
+            // Skip row[0] (row number), write data columns only
+            await writer.WriteLineAsync(string.Join('\t', row.AsSpan(1).ToArray()));
+        }
+    }
+
+    private void OnLockFirstClick(object? sender, RoutedEventArgs e)
+    {
+        _lockFirstColumn = !_lockFirstColumn;
+        LockFirstMenuItem.Icon = _lockFirstColumn
+            ? new CheckBox { IsChecked = true, IsHitTestVisible = false }
+            : null;
+        UpdateFrozenState();
     }
 
     private void UpdateFrozenState()
     {
         if (_firstDataColumn is null || _rows is null) return;
 
-        var locked = FreezeCheckBox.IsChecked == true;
-        Grid.FrozenColumnCount = locked ? 2 : 1;
+        Grid.FrozenColumnCount = _lockFirstColumn ? 2 : 1;
 
-        if (locked)
+        if (_lockFirstColumn)
             _firstDataColumn.CellStyleClasses.Add("frozen");
         else
             _firstDataColumn.CellStyleClasses.Remove("frozen");
