@@ -43,7 +43,8 @@ public partial class FileViewerWindow : Window
         Title = string.IsNullOrEmpty(label)
             ? Path.GetFileName(filePath)
             : $"{Path.GetFileName(filePath)} - {label}";
-        CreateBackupIfNeeded(filePath);
+        // On hold for now
+        // CreateBackupIfNeeded(filePath);
         LoadTsv(filePath);
         LockFirstMenuItem.Click += OnLockFirstClick;
         SearchColumnCombo.SelectionChanged += OnSearchColumnChanged;
@@ -59,12 +60,13 @@ public partial class FileViewerWindow : Window
         Grid.CellEditEnding += OnCellEditEnding;
     }
 
-    private static void CreateBackupIfNeeded(string filePath)
-    {
-        var backupPath = filePath + ".backup";
-        if (!File.Exists(backupPath))
-            File.Copy(filePath, backupPath);
-    }
+    // On hold for now
+    // private static void CreateBackupIfNeeded(string filePath)
+    // {
+    //     var backupPath = filePath + ".backup";
+    //     if (!File.Exists(backupPath))
+    //         File.Copy(filePath, backupPath);
+    // }
 
     private static string DetectLineEndings(string filePath)
     {

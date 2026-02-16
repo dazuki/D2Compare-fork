@@ -386,23 +386,34 @@ public partial class MainViewModel : ObservableObject
     private void OpenSourceFile()
     {
         var path = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
-        var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
-        OpenFileViewer(path, label);
+        // On hold for now
+        // var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
+        // OpenFileViewer(path, label);
+        OpenFileInOs(path);
     }
 
     [RelayCommand(CanExecute = nameof(HasFileSelected))]
     private void OpenTargetFile()
     {
         var path = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
-        var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
-        OpenFileViewer(path, label);
+        // On hold for now
+        // var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
+        // OpenFileViewer(path, label);
+        OpenFileInOs(path);
     }
 
-    private static void OpenFileViewer(string path, string label)
+    private static void OpenFileInOs(string path)
     {
         if (!File.Exists(path)) return;
-        new FileViewerWindow(path, label).Show();
+        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
     }
+
+    // On hold for now
+    // private static void OpenFileViewer(string path, string label)
+    // {
+    //     if (!File.Exists(path)) return;
+    //     new FileViewerWindow(path, label).Show();
+    // }
 
     private void RebuildBatchDocuments()
     {
