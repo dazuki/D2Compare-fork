@@ -2,9 +2,7 @@ using D2Compare.Core.Models;
 
 namespace D2Compare.Core.Services;
 
-/// <summary>
-/// Builds FormattedDocument from CompareResult data, replacing RTF generation.
-/// </summary>
+// Builds FormattedDocument from CompareResult data, replacing RTF generation.
 public static class FormattedTextBuilder
 {
     public static FormattedDocument BuildColumnDiffs(CompareResult result, bool isBatchMode)

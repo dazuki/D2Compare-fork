@@ -608,27 +608,43 @@ public partial class MainViewModel : ObservableObject
     private void DismissUpdate() => PendingUpdate = null;
 
     [RelayCommand(CanExecute = nameof(HasColumnsContent))]
-    private Task SaveColumnsAsText() => SaveDocumentAsText(ColumnsDocument, "Columns.Altered");
+    private Task SaveColumnsAsText() => SaveDocumentAsText(ColumnsDocument, "Columns.Altered", "Columns Altered");
     private bool HasColumnsContent() => ColumnsDocument is { Lines.Count: > 0 };
+    public bool ColumnsHasContent => HasColumnsContent();
 
     [RelayCommand(CanExecute = nameof(HasRowsContent))]
-    private Task SaveRowsAsText() => SaveDocumentAsText(RowsDocument, "Rows.Altered");
+    private Task SaveRowsAsText() => SaveDocumentAsText(RowsDocument, "Rows.Altered", "Rows Altered");
     private bool HasRowsContent() => RowsDocument is { Lines.Count: > 0 };
+    public bool RowsHasContent => HasRowsContent();
 
     [RelayCommand(CanExecute = nameof(HasValuesContent))]
-    private Task SaveValuesAsText() => SaveDocumentAsText(ValuesDocument, "Values");
+    private Task SaveValuesAsText() => SaveDocumentAsText(ValuesDocument, "Values", "Values");
     private bool HasValuesContent() => ValuesDocument is { Lines.Count: > 0 };
+    public bool ValuesHasContent => HasValuesContent();
 
-    partial void OnColumnsDocumentChanged(FormattedDocument? value) => SaveColumnsAsTextCommand.NotifyCanExecuteChanged();
-    partial void OnRowsDocumentChanged(FormattedDocument? value) => SaveRowsAsTextCommand.NotifyCanExecuteChanged();
-    partial void OnValuesDocumentChanged(FormattedDocument? value) => SaveValuesAsTextCommand.NotifyCanExecuteChanged();
+    partial void OnColumnsDocumentChanged(FormattedDocument? value)
+    {
+        SaveColumnsAsTextCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ColumnsHasContent));
+    }
+    partial void OnRowsDocumentChanged(FormattedDocument? value)
+    {
+        SaveRowsAsTextCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(RowsHasContent));
+    }
+    partial void OnValuesDocumentChanged(FormattedDocument? value)
+    {
+        SaveValuesAsTextCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ValuesHasContent));
+    }
 
-    private async Task SaveDocumentAsText(FormattedDocument? document, string panelSuffix)
+    private async Task SaveDocumentAsText(FormattedDocument? document, string panelSuffix, string panelName)
     {
         if (document is null || document.Lines.Count == 0) return;
 
+        bool isDisplayAll = _batchResults.Count > 0 && SelectedFileIndex < 0;
         string prefix;
-        if (_batchResults.Count > 0 && SelectedFileIndex < 0)
+        if (isDisplayAll)
             prefix = "DisplayAll";
         else if (SelectedFileIndex >= 0 && SelectedFileIndex < FileList.Count)
             prefix = Path.GetFileNameWithoutExtension(FileList[SelectedFileIndex]);
@@ -645,8 +661,23 @@ public partial class MainViewModel : ObservableObject
 
         if (file is null) return;
 
-        var lines = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
-        await File.WriteAllLinesAsync(file.Path.LocalPath, lines);
+        var sourceName = SelectedSourceIndex >= 0 && SelectedSourceIndex < SourceVersions.Count
+            ? SourceVersions[SelectedSourceIndex] : "Unknown";
+        var targetName = SelectedTargetIndex >= 0 && SelectedTargetIndex < TargetVersions.Count
+            ? TargetVersions[SelectedTargetIndex] : "Unknown";
+
+        var headerLines = new List<string>
+        {
+            $"Source:   {sourceName}",
+            $"Target:   {targetName}",
+        };
+        headerLines.Add($"File:     {(isDisplayAll ? "All Files" : $"{prefix}.txt")}");
+        headerLines.Add($"Summary:  {panelName}");
+        headerLines.Add(new string('-', 40));
+        headerLines.Add("");
+
+        var content = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
+        await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
     }
 
     private static void OpenUrl(string url) =>

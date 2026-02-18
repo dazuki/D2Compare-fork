@@ -94,11 +94,9 @@ public class FormattedTextPresenter : UserControl
         _itemsControl.ItemsSource = _sections;
     }
 
-    /// <summary>
-    /// Split lines into sections at FileName/FileNameMuted boundaries.
-    /// Single-file mode (no file-name lines) → one section → full multi-line selection.
-    /// Batch mode → one section per file → selection within each file, virtualized across files.
-    /// </summary>
+    // Split lines into sections at FileName/FileNameMuted boundaries.
+    // Single-file mode (no file-name lines) → one section → full multi-line selection.
+    // Batch mode → one section per file → selection within each file, virtualized across files.
     private static List<List<FormattedLine>> SplitIntoSections(IReadOnlyList<FormattedLine> lines)
     {
         var sections = new List<List<FormattedLine>>();
@@ -129,11 +127,9 @@ public class FormattedTextPresenter : UserControl
         return sections;
     }
 
-    /// <summary>
-    /// Update only realized (visible) containers in-place via ContainerFromIndex.
-    /// No ItemsSource reassignment — no virtualizer rebuild — instant.
-    /// Newly scrolled items pick up current SearchTerm/theme via BuildSectionBlock.
-    /// </summary>
+    // Update only realized (visible) containers in-place via ContainerFromIndex.
+    // No ItemsSource reassignment — no virtualizer rebuild — instant.
+    // Newly scrolled items pick up current SearchTerm/theme via BuildSectionBlock.
     private void UpdateRealizedItems()
     {
         if (_sections is null) return;

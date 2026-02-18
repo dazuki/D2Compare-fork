@@ -1,9 +1,7 @@
 namespace D2Compare.Core.Services;
 
-/// <summary>
-/// Recognizes known schema transformations between D2 versions that look like
-/// adds/removes but are actually renames. Ported from Form1.ApplyManualFixes().
-/// </summary>
+// Recognizes known schema transformations between D2 versions that look like
+// adds/removes but are actually renames. Ported from Form1.ApplyManualFixes().
 public static class SchemaFixProvider
 {
     private static readonly Dictionary<string, string> MonstatsMappings = new()

@@ -377,10 +377,8 @@ public partial class FileViewerWindow : Window
         SearchBox.Focus();
     }
 
-    /// <summary>
-    /// Search rows. If colIndex is null, search all columns. Otherwise search specific column.
-    /// colIndex is the array index in _rows (1-based, 0 = row number).
-    /// </summary>
+    // Search rows. If colIndex is null, search all columns. Otherwise search specific column.
+    // colIndex is the array index in _rows (1-based, 0 = row number).
     private void SearchColumns(string text, int? colIndex)
     {
         if (_rows is null || _rows.Count == 0) return;

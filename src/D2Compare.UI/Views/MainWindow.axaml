@@ -232,7 +232,7 @@
                             Icon="IconFolderSearch" StrokeWidth="2" />
                         <TextBlock
                             VerticalAlignment="Center"
-                            FontWeight="Bold" Text="Summary" />
+                            FontWeight="Bold" Text="File Summary" />
                     </StackPanel>
                     <Button
                         Grid.Column="2"
@@ -352,8 +352,9 @@
                     Grid.Column="1"
                     Padding="8,4"
                     Command="{Binding SaveColumnsAsTextCommand}"
-                    ToolTip.Tip="Save As Text">
-                    <TextBlock FontSize="13" Text="Save Info" />
+                    IsVisible="{Binding ColumnsHasContent}"
+                    ToolTip.Tip="Export Summary as text file">
+                    <TextBlock FontSize="13" Text="Export Summary" />
                 </Button>
             </Grid>
             <Grid
@@ -394,8 +395,9 @@
                     Grid.Column="1"
                     Padding="8,4"
                     Command="{Binding SaveRowsAsTextCommand}"
-                    ToolTip.Tip="Save As Text">
-                    <TextBlock FontSize="13" Text="Save Info" />
+                    IsVisible="{Binding RowsHasContent}"
+                    ToolTip.Tip="Export Summary as text file">
+                    <TextBlock FontSize="13" Text="Export Summary" />
                 </Button>
             </Grid>
             <Grid
@@ -431,8 +433,9 @@
                     Grid.Column="1"
                     Padding="8,4"
                     Command="{Binding SaveValuesAsTextCommand}"
-                    ToolTip.Tip="Save As Text">
-                    <TextBlock FontSize="13" Text="Save Info" />
+                    IsVisible="{Binding ValuesHasContent}"
+                    ToolTip.Tip="Export Summary as text file">
+                    <TextBlock FontSize="13" Text="Export Summary" />
                 </Button>
             </Grid>
 
