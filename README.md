@@ -1,10 +1,4 @@
-## Main Screenshot
-
 ![Screenshot](src/D2Compare.UI/Assets/d2_compare_2.0.2_b.png)
-
-## Datagrid Screenshot
-
-![Screenshot](src/D2Compare.UI/Assets/d2_compare_v2_datagrid.png)
 
 This is a fork of [locbones/D2Compare](https://github.com/locbones/D2Compare).
 
@@ -17,7 +11,6 @@ The original WinForms application has been migrated to [Avalonia UI](https://ava
 - "Show only new rows" filter for value breakdown
 - Diff stats per panel (+added -removed ~changed)
 - Ctrl+C to copy text from diff panels
-- Tab Grid Data viewer when opening source/target files
  
 ## Requirements
 
