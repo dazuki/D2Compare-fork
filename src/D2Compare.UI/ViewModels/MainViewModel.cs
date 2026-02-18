@@ -607,6 +607,48 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void DismissUpdate() => PendingUpdate = null;
 
+    [RelayCommand(CanExecute = nameof(HasColumnsContent))]
+    private Task SaveColumnsAsText() => SaveDocumentAsText(ColumnsDocument, "Columns.Altered");
+    private bool HasColumnsContent() => ColumnsDocument is { Lines.Count: > 0 };
+
+    [RelayCommand(CanExecute = nameof(HasRowsContent))]
+    private Task SaveRowsAsText() => SaveDocumentAsText(RowsDocument, "Rows.Altered");
+    private bool HasRowsContent() => RowsDocument is { Lines.Count: > 0 };
+
+    [RelayCommand(CanExecute = nameof(HasValuesContent))]
+    private Task SaveValuesAsText() => SaveDocumentAsText(ValuesDocument, "Values");
+    private bool HasValuesContent() => ValuesDocument is { Lines.Count: > 0 };
+
+    partial void OnColumnsDocumentChanged(FormattedDocument? value) => SaveColumnsAsTextCommand.NotifyCanExecuteChanged();
+    partial void OnRowsDocumentChanged(FormattedDocument? value) => SaveRowsAsTextCommand.NotifyCanExecuteChanged();
+    partial void OnValuesDocumentChanged(FormattedDocument? value) => SaveValuesAsTextCommand.NotifyCanExecuteChanged();
+
+    private async Task SaveDocumentAsText(FormattedDocument? document, string panelSuffix)
+    {
+        if (document is null || document.Lines.Count == 0) return;
+
+        string prefix;
+        if (_batchResults.Count > 0 && SelectedFileIndex < 0)
+            prefix = "DisplayAll";
+        else if (SelectedFileIndex >= 0 && SelectedFileIndex < FileList.Count)
+            prefix = Path.GetFileNameWithoutExtension(FileList[SelectedFileIndex]);
+        else
+            prefix = "output";
+
+        var storage = _topLevel.StorageProvider;
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save As Text",
+            SuggestedFileName = $"{prefix}-{panelSuffix}.txt",
+            FileTypeChoices = [new FilePickerFileType("Text File") { Patterns = ["*.txt"] }],
+        });
+
+        if (file is null) return;
+
+        var lines = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
+        await File.WriteAllLinesAsync(file.Path.LocalPath, lines);
+    }
+
     private static void OpenUrl(string url) =>
         Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
 }

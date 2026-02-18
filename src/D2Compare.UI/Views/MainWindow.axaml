@@ -181,30 +181,28 @@
                     Orientation="Horizontal" Spacing="16">
                     <TextBlock
                         VerticalAlignment="Center"
-                        FontWeight="SemiBold"
-                        Text="Convert to target:" />
+                        FontWeight="SemiBold" Text="Convert to target:" />
                     <CheckBox
                         VerticalAlignment="Center"
                         Content="Columns"
                         IsChecked="{Binding ConvertColumns}" />
-                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Rows:" />
-                    <StackPanel VerticalAlignment="Center" Orientation="Vertical" Spacing="2">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontWeight="SemiBold" Text="Rows:" />
+                    <StackPanel
+                        VerticalAlignment="Center"
+                        Orientation="Vertical" Spacing="2">
                         <RadioButton
-                            GroupName="RowConversionMode"
-                            Content="None"
+                            Content="None" GroupName="RowConversionMode"
                             IsChecked="{Binding IsRowModeNone}" />
                         <RadioButton
-                            GroupName="RowConversionMode"
-                            Content="Append original data at end"
+                            Content="Append original data at end" GroupName="RowConversionMode"
                             IsChecked="{Binding IsRowModeAppendOriginal}" />
                         <RadioButton
-                            GroupName="RowConversionMode"
-                            Content="Append target data at end"
+                            Content="Append target data at end" GroupName="RowConversionMode"
                             IsChecked="{Binding IsRowModeAppendTarget}" />
                     </StackPanel>
-                    <Button
-                        Padding="8,4"
-                        Command="{Binding ConvertToTargetCommand}">
+                    <Button Padding="8,4" Command="{Binding ConvertToTargetCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <ti:TablerIcon
                                 Width="16" Height="16"
@@ -212,8 +210,7 @@
                                 Icon="IconFileExport" StrokeWidth="2" />
                             <TextBlock
                                 VerticalAlignment="Center"
-                                FontWeight="SemiBold"
-                                Text="Convert all .txt to target..." />
+                                FontWeight="SemiBold" Text="Convert all .txt to target..." />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -222,8 +219,8 @@
             <!--  Right: File Summary + Search  -->
             <StackPanel
                 Grid.Column="1"
-                VerticalAlignment="Top"
                 MaxWidth="320"
+                VerticalAlignment="Top"
                 Spacing="6">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <StackPanel
@@ -286,13 +283,16 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
                 <Grid ColumnDefinitions="Auto,*">
-                    <TextBlock Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0" Text="{Binding MatchLabel}" />
+                    <TextBlock
+                        Grid.Column="0"
+                        Margin="0,0,8,0" VerticalAlignment="Center"
+                        Text="{Binding MatchLabel}" />
                     <TextBlock
                         Grid.Column="1"
                         VerticalAlignment="Top"
-                        TextWrapping="Wrap"
                         Classes.warning="{Binding IsStatusWarning}"
-                        Text="{Binding StatusText}">
+                        Text="{Binding StatusText}"
+                        TextWrapping="Wrap">
                         <TextBlock.Styles>
                             <Style Selector="TextBlock:not(.warning)">
                                 <Setter Property="Foreground" Value="Gray" />
@@ -314,94 +314,127 @@
             Margin="10,0,10,10"
             ColumnDefinitions="*,Auto,*,Auto,1.5*" RowDefinitions="Auto,*">
             <!--  Column Headers  -->
-            <StackPanel
+            <Grid
                 Grid.Row="0" Grid.Column="0"
                 Margin="0,0,0,4"
-                Orientation="Horizontal" Spacing="6">
-                <ti:TablerIcon
-                    Width="18" Height="18"
-                    Brush="{DynamicResource IconForegroundBrush}"
-                    Icon="IconLayoutColumns" StrokeWidth="2" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontWeight="Bold" Text="Columns Altered" />
+                ColumnDefinitions="*,Auto">
                 <StackPanel
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal" Spacing="4">
+                    Grid.Column="0"
+                    Orientation="Horizontal" Spacing="6">
+                    <ti:TablerIcon
+                        Width="18" Height="18"
+                        Brush="{DynamicResource IconForegroundBrush}"
+                        Icon="IconLayoutColumns" StrokeWidth="2" />
                     <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatAddedBrush}"
-                        IsVisible="{Binding ColumnsAdded, Converter={StaticResource IntToBool}}"
-                        Text="{Binding ColumnsAdded, StringFormat='+{0}'}" />
-                    <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatRemovedBrush}"
-                        IsVisible="{Binding ColumnsRemoved, Converter={StaticResource IntToBool}}"
-                        Text="{Binding ColumnsRemoved, StringFormat='-{0}'}" />
-                    <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatChangedBrush}"
-                        IsVisible="{Binding ColumnsChanged, Converter={StaticResource IntToBool}}"
-                        Text="{Binding ColumnsChanged, StringFormat='~{0}'}" />
+                        VerticalAlignment="Center"
+                        FontWeight="Bold" Text="Columns Altered" />
+                    <StackPanel
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal" Spacing="4">
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatAddedBrush}"
+                            IsVisible="{Binding ColumnsAdded, Converter={StaticResource IntToBool}}"
+                            Text="{Binding ColumnsAdded, StringFormat='+{0}'}" />
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatRemovedBrush}"
+                            IsVisible="{Binding ColumnsRemoved, Converter={StaticResource IntToBool}}"
+                            Text="{Binding ColumnsRemoved, StringFormat='-{0}'}" />
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatChangedBrush}"
+                            IsVisible="{Binding ColumnsChanged, Converter={StaticResource IntToBool}}"
+                            Text="{Binding ColumnsChanged, StringFormat='~{0}'}" />
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-            <StackPanel
+                <Button
+                    Grid.Column="1"
+                    Padding="8,4"
+                    Command="{Binding SaveColumnsAsTextCommand}"
+                    ToolTip.Tip="Save As Text">
+                    <TextBlock FontSize="13" Text="Save Info" />
+                </Button>
+            </Grid>
+            <Grid
                 Grid.Row="0" Grid.Column="2"
                 Margin="0,0,0,4"
-                Orientation="Horizontal" Spacing="6">
-                <ti:TablerIcon
-                    Width="18" Height="18"
-                    Brush="{DynamicResource IconForegroundBrush}"
-                    Icon="IconLayoutRows" StrokeWidth="2" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontWeight="Bold" Text="Rows Altered" />
+                ColumnDefinitions="*,Auto">
                 <StackPanel
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal" Spacing="4">
+                    Grid.Column="0"
+                    Orientation="Horizontal" Spacing="6">
+                    <ti:TablerIcon
+                        Width="18" Height="18"
+                        Brush="{DynamicResource IconForegroundBrush}"
+                        Icon="IconLayoutRows" StrokeWidth="2" />
                     <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatAddedBrush}"
-                        IsVisible="{Binding RowsAdded, Converter={StaticResource IntToBool}}"
-                        Text="{Binding RowsAdded, StringFormat='+{0}'}" />
-                    <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatRemovedBrush}"
-                        IsVisible="{Binding RowsRemoved, Converter={StaticResource IntToBool}}"
-                        Text="{Binding RowsRemoved, StringFormat='-{0}'}" />
-                    <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatChangedBrush}"
-                        IsVisible="{Binding RowsChanged, Converter={StaticResource IntToBool}}"
-                        Text="{Binding RowsChanged, StringFormat='~{0}'}" />
+                        VerticalAlignment="Center"
+                        FontWeight="Bold" Text="Rows Altered" />
+                    <StackPanel
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal" Spacing="4">
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatAddedBrush}"
+                            IsVisible="{Binding RowsAdded, Converter={StaticResource IntToBool}}"
+                            Text="{Binding RowsAdded, StringFormat='+{0}'}" />
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatRemovedBrush}"
+                            IsVisible="{Binding RowsRemoved, Converter={StaticResource IntToBool}}"
+                            Text="{Binding RowsRemoved, StringFormat='-{0}'}" />
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatChangedBrush}"
+                            IsVisible="{Binding RowsChanged, Converter={StaticResource IntToBool}}"
+                            Text="{Binding RowsChanged, StringFormat='~{0}'}" />
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-            <StackPanel
+                <Button
+                    Grid.Column="1"
+                    Padding="8,4"
+                    Command="{Binding SaveRowsAsTextCommand}"
+                    ToolTip.Tip="Save As Text">
+                    <TextBlock FontSize="13" Text="Save Info" />
+                </Button>
+            </Grid>
+            <Grid
                 Grid.Row="0" Grid.Column="4"
                 Margin="0,0,0,4"
-                Orientation="Horizontal" Spacing="6">
-                <ti:TablerIcon
-                    Width="18" Height="18"
-                    Brush="{DynamicResource IconForegroundBrush}"
-                    Icon="IconPencil" StrokeWidth="2" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontWeight="Bold" Text="Values" />
+                ColumnDefinitions="*,Auto">
                 <StackPanel
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal" Spacing="4">
+                    Grid.Column="0"
+                    Orientation="Horizontal" Spacing="6">
+                    <ti:TablerIcon
+                        Width="18" Height="18"
+                        Brush="{DynamicResource IconForegroundBrush}"
+                        Icon="IconPencil" StrokeWidth="2" />
                     <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatChangedBrush}"
-                        IsVisible="{Binding ValuesChanged, Converter={StaticResource IntToBool}}"
-                        Text="{Binding ValuesChanged, StringFormat='~{0}'}" />
-                    <TextBlock
-                        FontSize="13" FontWeight="SemiBold"
-                        Foreground="{DynamicResource StatAddedBrush}"
-                        IsVisible="{Binding ValuesNew, Converter={StaticResource IntToBool}}"
-                        Text="{Binding ValuesNew, StringFormat='+{0}'}" />
+                        VerticalAlignment="Center"
+                        FontWeight="Bold" Text="Values" />
+                    <StackPanel
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal" Spacing="4">
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatChangedBrush}"
+                            IsVisible="{Binding ValuesChanged, Converter={StaticResource IntToBool}}"
+                            Text="{Binding ValuesChanged, StringFormat='~{0}'}" />
+                        <TextBlock
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="{DynamicResource StatAddedBrush}"
+                            IsVisible="{Binding ValuesNew, Converter={StaticResource IntToBool}}"
+                            Text="{Binding ValuesNew, StringFormat='+{0}'}" />
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
+                <Button
+                    Grid.Column="1"
+                    Padding="8,4"
+                    Command="{Binding SaveValuesAsTextCommand}"
+                    ToolTip.Tip="Save As Text">
+                    <TextBlock FontSize="13" Text="Save Info" />
+                </Button>
+            </Grid>
 
             <!--  Columns Panel  -->
             <Border
@@ -496,11 +529,7 @@
                 VerticalAlignment="Center"
                 IsVisible="{Binding HasPendingUpdate}"
                 Orientation="Horizontal" Spacing="8">
-                <Button
-                    Padding="4,2"
-                    Background="Transparent" BorderThickness="0"
-                    Command="{Binding ApplyUpdateCommand}"
-                    IsEnabled="{Binding !IsDownloadingUpdate}">
+                <Button Command="{Binding ApplyUpdateCommand}" IsEnabled="{Binding !IsDownloadingUpdate}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <ti:TablerIcon
                             Width="14" Height="14"
@@ -532,8 +561,8 @@
                     ToolTip.Tip="Dismiss">
                     <ti:TablerIcon
                         Width="12" Height="12"
-                        Brush="Gray"
-                        Icon="IconX" StrokeWidth="2" />
+                        Brush="Gray" Icon="IconX"
+                        StrokeWidth="2" />
                 </Button>
             </StackPanel>
 
