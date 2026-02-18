@@ -37,6 +37,7 @@ public class FormattedTextPresenter : UserControl
     private static readonly IBrush s_highlightFgDark = Brushes.White;
 
     private readonly ItemsControl _itemsControl;
+    private List<List<FormattedLine>>? _sections;
 
     public FormattedDocument? Document
     {
@@ -55,7 +56,7 @@ public class FormattedTextPresenter : UserControl
         _itemsControl = new ItemsControl
         {
             ItemsPanel = new FuncTemplate<Panel?>(() => new VirtualizingStackPanel()),
-            ItemTemplate = new FuncDataTemplate<FormattedLine>(BuildLineBlock, supportsRecycling: false),
+            ItemTemplate = new FuncDataTemplate<List<FormattedLine>>(BuildSectionBlock, supportsRecycling: false),
         };
 
         // Template with ScrollViewer so VirtualizingStackPanel can get viewport info
@@ -89,17 +90,53 @@ public class FormattedTextPresenter : UserControl
 
     private void OnDocumentChanged()
     {
-        _itemsControl.ItemsSource = Document?.Lines;
+        _sections = Document is null ? null : SplitIntoSections(Document.Lines);
+        _itemsControl.ItemsSource = _sections;
+    }
+
+    /// <summary>
+    /// Split lines into sections at FileName/FileNameMuted boundaries.
+    /// Single-file mode (no file-name lines) → one section → full multi-line selection.
+    /// Batch mode → one section per file → selection within each file, virtualized across files.
+    /// </summary>
+    private static List<List<FormattedLine>> SplitIntoSections(IReadOnlyList<FormattedLine> lines)
+    {
+        var sections = new List<List<FormattedLine>>();
+        List<FormattedLine>? current = null;
+
+        foreach (var line in lines)
+        {
+            bool isFileHeader = line.Spans.Count > 0
+                && line.Spans[0].Color is SpanColor.FileName or SpanColor.FileNameMuted;
+
+            if (isFileHeader)
+            {
+                current = new List<FormattedLine> { line };
+                sections.Add(current);
+            }
+            else
+            {
+                // No file header yet (single-file mode) — create initial section
+                if (current is null)
+                {
+                    current = new List<FormattedLine>();
+                    sections.Add(current);
+                }
+                current.Add(line);
+            }
+        }
+
+        return sections;
     }
 
     /// <summary>
     /// Update only realized (visible) containers in-place via ContainerFromIndex.
     /// No ItemsSource reassignment — no virtualizer rebuild — instant.
-    /// Newly scrolled items pick up current SearchTerm/theme via BuildLineBlock.
+    /// Newly scrolled items pick up current SearchTerm/theme via BuildSectionBlock.
     /// </summary>
     private void UpdateRealizedItems()
     {
-        if (Document is null) return;
+        if (_sections is null) return;
 
         var isDark = ActualThemeVariant == ThemeVariant.Dark;
         var searchTerm = SearchTerm;
@@ -107,23 +144,19 @@ public class FormattedTextPresenter : UserControl
         for (int i = 0; i < _itemsControl.ItemCount; i++)
         {
             var container = _itemsControl.ContainerFromIndex(i);
-            if (container is null) continue; // not realized (off-screen)
+            if (container is null) continue;
 
-            // Find the TextBlock and its data item
             var tb = FindChildTextBlock(container);
             if (tb is null) continue;
 
-            var line = _itemsControl.Items[i] as FormattedLine;
-            if (line is null) continue;
+            if (_itemsControl.Items[i] is not List<FormattedLine> section) continue;
 
-            // Set a NEW InlineCollection to guarantee visual update
-            tb.Inlines = BuildInlines(line, searchTerm, isDark);
+            tb.Inlines = BuildSectionInlines(section, searchTerm, isDark);
         }
     }
 
     private static SelectableTextBlock? FindChildTextBlock(Control container)
     {
-        // Container is typically ContentPresenter; SelectableTextBlock is its direct visual child
         foreach (var child in container.GetVisualChildren())
         {
             if (child is SelectableTextBlock tb)
@@ -132,39 +165,45 @@ public class FormattedTextPresenter : UserControl
         return null;
     }
 
-    private Control BuildLineBlock(FormattedLine line, INameScope _)
+    private Control BuildSectionBlock(List<FormattedLine> section, INameScope _)
     {
         var tb = new SelectableTextBlock { TextWrapping = TextWrapping.NoWrap };
 
-        if (line.Spans.Count == 0)
+        if (section.Count == 0)
             return tb;
 
-        tb.Inlines = BuildInlines(line, SearchTerm, ActualThemeVariant == ThemeVariant.Dark);
+        tb.Inlines = BuildSectionInlines(section, SearchTerm, ActualThemeVariant == ThemeVariant.Dark);
         return tb;
     }
 
-    private static InlineCollection BuildInlines(FormattedLine line, string? searchTerm, bool isDark)
+    private static InlineCollection BuildSectionInlines(List<FormattedLine> section, string? searchTerm, bool isDark)
     {
         var inlines = new InlineCollection();
 
-        foreach (var span in line.Spans)
+        for (int i = 0; i < section.Count; i++)
         {
-            var foreground = ResolveColor(span.Color, isDark);
-            var fontWeight = span.Style == SpanStyle.Bold ? FontWeight.Bold : FontWeight.Normal;
-            var fontSize = span.Color is SpanColor.FileName or SpanColor.FileNameMuted ? 15d : 13d;
+            if (i > 0)
+                inlines.Add(new LineBreak());
 
-            if (!string.IsNullOrEmpty(searchTerm) && span.Text.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            foreach (var span in section[i].Spans)
             {
-                AddHighlightedRuns(inlines, span.Text, searchTerm, foreground, fontWeight, fontSize, isDark);
-            }
-            else
-            {
-                inlines.Add(new Run(span.Text)
+                var foreground = ResolveColor(span.Color, isDark);
+                var fontWeight = span.Style == SpanStyle.Bold ? FontWeight.Bold : FontWeight.Normal;
+                var fontSize = span.Color is SpanColor.FileName or SpanColor.FileNameMuted ? 15d : 13d;
+
+                if (!string.IsNullOrEmpty(searchTerm) && span.Text.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 {
-                    Foreground = foreground,
-                    FontWeight = fontWeight,
-                    FontSize = fontSize,
-                });
+                    AddHighlightedRuns(inlines, span.Text, searchTerm, foreground, fontWeight, fontSize, isDark);
+                }
+                else
+                {
+                    inlines.Add(new Run(span.Text)
+                    {
+                        Foreground = foreground,
+                        FontWeight = fontWeight,
+                        FontSize = fontSize,
+                    });
+                }
             }
         }
 
