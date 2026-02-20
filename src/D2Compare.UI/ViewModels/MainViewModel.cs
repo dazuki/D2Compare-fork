@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
@@ -12,6 +13,8 @@ using D2Compare.Core.Models;
 using D2Compare.Core.Services;
 using D2Compare.Services;
 using D2Compare.Views;
+
+using Microsoft.Win32;
 
 namespace D2Compare.ViewModels;
 
@@ -385,27 +388,97 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasFileSelected))]
     private void OpenSourceFile()
     {
-        var path = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
-        // On hold for now
-        // var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
-        // OpenFileViewer(path, label);
-        OpenFileInOs(path);
+        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count)
+            return;
+
+        var filePath = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
+        var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
+
+        OpenFileViewer(filePath, role: "--source", originPath: _sourceFolderPath);
     }
 
-    [RelayCommand(CanExecute = nameof(HasFileSelected))]
+    [RelayCommand]
     private void OpenTargetFile()
     {
-        var path = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
-        // On hold for now
-        // var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
-        // OpenFileViewer(path, label);
-        OpenFileInOs(path);
+        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count)
+            return;
+
+        var filePath = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
+        var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
+
+        OpenFileViewer(filePath, role: "--target", originPath: _targetFolderPath);
     }
 
-    private static void OpenFileInOs(string path)
+
+    private static void OpenFileViewer(string filePath, string role, string originPath)
     {
-        if (!File.Exists(path)) return;
-        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        if (!File.Exists(filePath))
+            return;
+
+        string absFilePath = Path.GetFullPath(filePath);
+        string absOriginPath = Path.GetFullPath(originPath);
+        string args = $"{role} --path \"{absOriginPath}\" \"{absFilePath}\"";
+
+        ProcessStartInfo psi;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var viewerPath = GetWindowsViewerPathFromRegistry();
+
+            if (!string.IsNullOrWhiteSpace(viewerPath) && File.Exists(viewerPath))
+            {
+                psi = new ProcessStartInfo
+                {
+                    FileName = viewerPath,
+                    Arguments = args,
+                    UseShellExecute = false
+                };
+            }
+            else
+            {
+                psi = new ProcessStartInfo
+                {
+                    FileName = filePath,
+                    UseShellExecute = true
+                };
+            }
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            // I dont know how Linux works, need an always valid location to store TXTEditor.exe location
+            const string linuxViewerPath = "/usr/local/bin/myviewer";
+
+            psi = File.Exists(linuxViewerPath)
+                ? new ProcessStartInfo
+                {
+                    FileName = linuxViewerPath,
+                    Arguments = args,
+                    UseShellExecute = false
+                }
+                : new ProcessStartInfo
+                {
+                    FileName = "xdg-open",
+                    Arguments = $"\"{filePath}\"",
+                    UseShellExecute = false
+                };
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Unsupported operating system.");
+        }
+
+        Process.Start(psi);
+    }
+
+
+    private static string? GetWindowsViewerPathFromRegistry()
+    {
+        const string valueName = "ExecutablePath";
+        const string KeyPath = @"Software\d2_horadrim";
+        using (var legacyKey = Registry.CurrentUser.OpenSubKey(KeyPath, writable: false))
+        {
+            return legacyKey?.GetValue(valueName) as string;
+        }
     }
 
     // On hold for now
@@ -678,6 +751,64 @@ public partial class MainViewModel : ObservableObject
 
         var content = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
         await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
+    }
+
+    public void InitializeFromArguments(string? sourceFolder, string? targetFolder, string? filePath)
+    {
+        var customIndex = VersionInfo.BuiltInVersions.Length;
+
+        if (!string.IsNullOrWhiteSpace(sourceFolder) && Directory.Exists(sourceFolder))
+        {
+            // Treat as custom source folder
+            _settings.CustomSourcePath = sourceFolder;
+            _settings.SelectedSourceIndex = customIndex;
+            _settings.Save();
+
+            if (SourceVersions.Count > customIndex)
+                SourceVersions[customIndex] = sourceFolder;
+
+            _sourceFolderPath = sourceFolder;
+            SelectedSourceIndex = customIndex;
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetFolder) && Directory.Exists(targetFolder))
+        {
+            // Treat as custom target folder
+            _settings.CustomTargetPath = targetFolder;
+            _settings.SelectedTargetIndex = customIndex;
+            _settings.Save();
+
+            if (TargetVersions.Count > customIndex)
+                TargetVersions[customIndex] = targetFolder;
+
+            _targetFolderPath = targetFolder;
+            SelectedTargetIndex = customIndex;
+        }
+
+        // If a specific file was provided, try to select and compare it
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            // Ensure the file list is built if we have valid folders
+            if (FileList.Count == 0 &&
+                _sourceFolderPath.Length > 0 &&
+                _targetFolderPath.Length > 0 &&
+                Directory.Exists(_sourceFolderPath) &&
+                Directory.Exists(_targetFolderPath))
+            {
+                OnTargetChanged();
+            }
+
+            if (FileList.Count > 0)
+            {
+                var fileName = Path.GetFileName(filePath);
+                if (string.IsNullOrEmpty(fileName))
+                    fileName = filePath;
+
+                var index = FileList.IndexOf(fileName);
+                if (index >= 0)
+                    SelectedFileIndex = index;
+            }
+        }
     }
 
     private static void OpenUrl(string url) =>
