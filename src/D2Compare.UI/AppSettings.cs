@@ -1,12 +1,16 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace D2Compare;
 
 public class AppSettings
 {
-    private static readonly string s_configPath = Path.Combine(
-        AppContext.BaseDirectory, "D2Compare.settings.json");
+    private static readonly string s_configPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? Path.Combine(AppContext.BaseDirectory, "D2Compare.settings.json")
+        : Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".config", "D2Compare", "settings.json");
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -28,6 +32,9 @@ public class AppSettings
 
     public bool DisableUpdateCheck { get; set; }
 
+    // Variable for D2 Horadrim binary path on Unix
+    public string LinuxViewerPath { get; set; } = string.Empty;
+
     public static AppSettings Load()
     {
         try
@@ -44,6 +51,7 @@ public class AppSettings
     {
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(s_configPath)!);
             File.WriteAllText(s_configPath, JsonSerializer.Serialize(this, s_jsonOptions));
         }
         catch { }

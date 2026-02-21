@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
@@ -249,6 +250,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnSearchTextChanged(string value)
     {
         _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
         _searchDebounce = new CancellationTokenSource();
         var token = _searchDebounce.Token;
 
@@ -259,7 +261,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        _ = Task.Delay(300, token).ContinueWith(_ =>
+        _ = Task.Delay(500, token).ContinueWith(_ =>
         {
             ActiveSearchTerm = value;
             UpdateMatchCount();
@@ -392,25 +394,21 @@ public partial class MainViewModel : ObservableObject
             return;
 
         var filePath = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
-        var label = IsSourceCustom ? $"Source: {_sourceFolderPath}" : $"Source: {SourceVersions[SelectedSourceIndex]}";
-
         OpenFileViewer(filePath, role: "--source", originPath: _sourceFolderPath);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasFileSelected))]
     private void OpenTargetFile()
     {
         if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count)
             return;
 
         var filePath = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
-        var label = IsTargetCustom ? $"Target: {_targetFolderPath}" : $"Target: {TargetVersions[SelectedTargetIndex]}";
-
         OpenFileViewer(filePath, role: "--target", originPath: _targetFolderPath);
     }
 
 
-    private static void OpenFileViewer(string filePath, string role, string originPath)
+    private void OpenFileViewer(string filePath, string role, string originPath)
     {
         if (!File.Exists(filePath))
             return;
@@ -445,10 +443,9 @@ public partial class MainViewModel : ObservableObject
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            // I dont know how Linux works, need an always valid location to store TXTEditor.exe location
-            const string linuxViewerPath = "/usr/local/bin/myviewer";
+            var linuxViewerPath = _settings.LinuxViewerPath;
 
-            psi = File.Exists(linuxViewerPath)
+            psi = !string.IsNullOrWhiteSpace(linuxViewerPath) && File.Exists(linuxViewerPath)
                 ? new ProcessStartInfo
                 {
                     FileName = linuxViewerPath,
@@ -470,7 +467,7 @@ public partial class MainViewModel : ObservableObject
         Process.Start(psi);
     }
 
-
+    [SupportedOSPlatform("windows")]
     private static string? GetWindowsViewerPathFromRegistry()
     {
         const string valueName = "ExecutablePath";
@@ -480,13 +477,6 @@ public partial class MainViewModel : ObservableObject
             return legacyKey?.GetValue(valueName) as string;
         }
     }
-
-    // On hold for now
-    // private static void OpenFileViewer(string path, string label)
-    // {
-    //     if (!File.Exists(path)) return;
-    //     new FileViewerWindow(path, label).Show();
-    // }
 
     private void RebuildBatchDocuments()
     {

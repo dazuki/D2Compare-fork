@@ -189,8 +189,8 @@ public class UpdateService
             File.WriteAllText(scriptPath, $"""
                 #!/bin/bash
                 while kill -0 {pid} 2>/dev/null; do sleep 0.2; done
-                # Backup settings
-                settings="{installDir}/{settingsFile}"
+                # Backup settings (Linux stores them in ~/.config, not installDir)
+                settings="$HOME/.config/D2Compare/{settingsFile}"
                 backup="{settingsBackup}"
                 [ -f "$settings" ] && cp "$settings" "$backup"
                 # Clean install directory
@@ -199,7 +199,10 @@ public class UpdateService
                 cp -rf "{stagingDir}/." "{installDir}/"
                 chmod +x "{exePath}"
                 # Restore settings
-                [ -f "$backup" ] && mv "$backup" "$settings"
+                if [ -f "$backup" ]; then
+                    mkdir -p "$(dirname "$settings")"
+                    mv "$backup" "$settings"
+                fi
                 "{exePath}" &
                 rm -rf "{stagingDir}"
                 rm -- "$0"

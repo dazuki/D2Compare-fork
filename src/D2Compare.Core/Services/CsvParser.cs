@@ -7,7 +7,9 @@ public static class CsvParser
         var data = new Dictionary<string, List<string>>();
 
         using var reader = new StreamReader(filePath);
-        var headers = reader.ReadLine()!.Split('\t');
+        var headerLine = reader.ReadLine();
+        if (headerLine is null) return data;
+        var headers = headerLine.Split('\t');
 
         foreach (var header in headers)
             data[header] = new List<string>();
