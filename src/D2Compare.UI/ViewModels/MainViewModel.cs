@@ -77,7 +77,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _matchLabel = "";
     [ObservableProperty] private bool _isLoading;
 
-    private CancellationTokenSource? _searchDebounce;
 
     [ObservableProperty] private FormattedDocument? _columnsDocument;
     [ObservableProperty] private FormattedDocument? _rowsDocument;
@@ -221,14 +220,14 @@ public partial class MainViewModel : ObservableObject
         OpenTargetFileCommand.NotifyCanExecuteChanged();
         if (value < 0 || value >= FileList.Count) return;
         BatchReloadNeeded = false;
-        RunSingleComparison();
+        _ = RunSingleComparisonAsync();
     }
 
     partial void OnIncludeNewRowsChanged(bool value)
     {
         if (!value) ShowOnlyNewRows = false;
         if (SelectedFileIndex >= 0 && _sourceFolderPath.Length > 0)
-            RunSingleComparison();
+            _ = RunSingleComparisonAsync();
         else if (_batchResults.Count > 0)
             BatchReloadNeeded = true;
     }
@@ -236,7 +235,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnShowOnlyNewRowsChanged(bool value)
     {
         if (SelectedFileIndex >= 0 && _sourceFolderPath.Length > 0)
-            RunSingleComparison();
+            _ = RunSingleComparisonAsync();
         else if (_batchResults.Count > 0)
             BatchReloadNeeded = true;
     }
@@ -247,25 +246,59 @@ public partial class MainViewModel : ObservableObject
             BatchReloadNeeded = true;
     }
 
-    partial void OnSearchTextChanged(string value)
+    [RelayCommand]
+    private async Task ExecuteSearch()
     {
-        _searchDebounce?.Cancel();
-        _searchDebounce?.Dispose();
-        _searchDebounce = new CancellationTokenSource();
-        var token = _searchDebounce.Token;
+        IsLoading = true;
+        StatusText = string.IsNullOrEmpty(SearchText) ? "Clearing..." : "Searching...";
 
-        if (string.IsNullOrEmpty(value))
+        // Yield a frame so the loading indicator renders before the heavy highlight rebuild
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+            () => { }, Avalonia.Threading.DispatcherPriority.Render);
+
+        ActiveSearchTerm = SearchText;
+
+        if (string.IsNullOrEmpty(SearchText))
         {
-            ActiveSearchTerm = "";
-            UpdateMatchCount();
+            MatchLabel = "";
+            IsLoading = false;
+            StatusText = "";
             return;
         }
 
-        _ = Task.Delay(500, token).ContinueWith(_ =>
+        var doc = ValuesDocument;
+        if (doc is null)
         {
-            ActiveSearchTerm = value;
-            UpdateMatchCount();
-        }, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.FromCurrentSynchronizationContext());
+            MatchLabel = "";
+            IsLoading = false;
+            StatusText = "";
+            return;
+        }
+
+        var term = SearchText;
+        int count = await Task.Run(() =>
+        {
+            int c = 0;
+            foreach (var line in doc.Lines)
+            {
+                foreach (var span in line.Spans)
+                {
+                    int pos = 0;
+                    while (pos < span.Text.Length)
+                    {
+                        int idx = span.Text.IndexOf(term, pos, StringComparison.OrdinalIgnoreCase);
+                        if (idx == -1) break;
+                        c++;
+                        pos = idx + term.Length;
+                    }
+                }
+            }
+            return c;
+        });
+
+        MatchLabel = count > 0 ? $"{count} matches" : "0 matches";
+        IsLoading = false;
+        StatusText = "";
     }
 
     [RelayCommand]
@@ -502,7 +535,7 @@ public partial class MainViewModel : ObservableObject
         UpdateStats(_batchResults);
     }
 
-    private void RunSingleComparison()
+    private async Task RunSingleComparisonAsync()
     {
         if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
 
@@ -516,14 +549,29 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var result = CompareService.CompareFile(sourcePath, targetPath, IncludeNewRows);
+        IsLoading = true;
+        IsStatusWarning = false;
+        StatusText = "Loading...";
+        var includeNew = IncludeNewRows;
+        var onlyNew = ShowOnlyNewRows;
 
-        ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
-        RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
-        ValuesDocument = FormattedTextBuilder.BuildValueDiffs(result, false, ShowOnlyNewRows);
-        UpdateStats(new[] { result });
+        try
+        {
+            var result = await Task.Run(() =>
+                CompareService.CompareFile(sourcePath, targetPath, includeNew));
 
-        SearchText = "";
+            ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
+            RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
+            ValuesDocument = FormattedTextBuilder.BuildValueDiffs(result, false, onlyNew);
+            UpdateStats(new[] { result });
+
+            SearchText = "";
+        }
+        finally
+        {
+            IsLoading = false;
+            StatusText = "";
+        }
     }
 
     private void UpdateStats(IEnumerable<CompareResult> results)
@@ -601,34 +649,6 @@ public partial class MainViewModel : ObservableObject
                 _settings.Save();
             }
         }
-    }
-
-    private void UpdateMatchCount()
-    {
-        if (string.IsNullOrEmpty(SearchText) || ValuesDocument is null)
-        {
-            MatchLabel = "";
-            return;
-        }
-
-        // Count matches across all value document text
-        int count = 0;
-        foreach (var line in ValuesDocument.Lines)
-        {
-            foreach (var span in line.Spans)
-            {
-                int pos = 0;
-                while (pos < span.Text.Length)
-                {
-                    int idx = span.Text.IndexOf(SearchText, pos, StringComparison.OrdinalIgnoreCase);
-                    if (idx == -1) break;
-                    count++;
-                    pos = idx + SearchText.Length;
-                }
-            }
-        }
-
-        MatchLabel = count > 0 ? $"{count} matches" : "0 matches";
     }
 
     private async Task CheckForUpdateAsync()

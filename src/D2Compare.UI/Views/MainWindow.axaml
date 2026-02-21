@@ -272,16 +272,34 @@
                             Text="No changes..." />
                     </Panel>
                 </Border>
-                <TextBox Text="{Binding SearchText}" Watermark="Search Term(s)">
-                    <TextBox.InnerLeftContent>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding SearchText}"
+                        Watermark="Search Term(s)">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Command="{Binding ExecuteSearchCommand}" Gesture="Enter" />
+                        </TextBox.KeyBindings>
+                        <TextBox.InnerLeftContent>
+                            <ti:TablerIcon
+                                Width="16" Height="16"
+                                Margin="6,0,0,0" VerticalAlignment="Center"
+                                Brush="{DynamicResource IconForegroundBrush}"
+                                Icon="IconSearch" Opacity="0.4"
+                                StrokeWidth="2" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+                    <Button
+                        Grid.Column="1"
+                        Padding="8,0" VerticalAlignment="Stretch"
+                        Command="{Binding ExecuteSearchCommand}"
+                        ToolTip.Tip="Search">
                         <ti:TablerIcon
                             Width="16" Height="16"
-                            Margin="6,0,0,0" VerticalAlignment="Center"
                             Brush="{DynamicResource IconForegroundBrush}"
-                            Icon="IconSearch" Opacity="0.4"
-                            StrokeWidth="2" />
-                    </TextBox.InnerLeftContent>
-                </TextBox>
+                            Icon="IconSearch" StrokeWidth="2" />
+                    </Button>
+                </Grid>
                 <Grid ColumnDefinitions="Auto,*">
                     <TextBlock
                         Grid.Column="0"

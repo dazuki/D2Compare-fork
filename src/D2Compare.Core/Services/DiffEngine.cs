@@ -55,25 +55,39 @@ public static class DiffEngine
         var groupedDifferences = new Dictionary<string, List<(string Diff, string ColIndex)>>();
         var newRowKeys = new HashSet<string>();
 
-        var allRowHeaders = new HashSet<string>(file1Data[rowHeaderColumn]);
-        allRowHeaders.UnionWith(file2Data[rowHeaderColumn]);
+        // Build stable header ordering and index lookup once
+        var headerList = allHeaders.ToList();
+        var headerIndexMap = new Dictionary<string, int>(headerList.Count);
+        for (int i = 0; i < headerList.Count; i++)
+            headerIndexMap[headerList[i]] = i;
+
+        // Build row index lookups to avoid O(n) IndexOf per column
+        var file1RowIndices = new Dictionary<string, int>();
+        var file1Rows = file1Data[rowHeaderColumn];
+        for (int i = 0; i < file1Rows.Count; i++)
+            file1RowIndices.TryAdd(file1Rows[i], i);
+
+        var file2RowIndices = new Dictionary<string, int>();
+        var file2Rows = file2Data[rowHeaderColumn];
+        for (int i = 0; i < file2Rows.Count; i++)
+            file2RowIndices.TryAdd(file2Rows[i], i);
+
+        var allRowHeaders = new HashSet<string>(file1Rows);
+        allRowHeaders.UnionWith(file2Rows);
 
         Parallel.ForEach(allRowHeaders, rowHeader =>
         {
-            bool inFile1 = file1Data[rowHeaderColumn].Contains(rowHeader);
-            bool inFile2 = file2Data[rowHeaderColumn].Contains(rowHeader);
+            bool inFile1 = file1RowIndices.ContainsKey(rowHeader);
+            bool inFile2 = file2RowIndices.ContainsKey(rowHeader);
 
             if (inFile1 && inFile2)
             {
-                foreach (var header in allHeaders)
+                int index1 = file1RowIndices[rowHeader];
+                int index2 = file2RowIndices[rowHeader];
+
+                foreach (var header in headerList)
                 {
                     if (!file1Data.ContainsKey(header) || !file2Data.ContainsKey(header))
-                        continue;
-
-                    int index1 = file1Data[rowHeaderColumn].IndexOf(rowHeader);
-                    int index2 = file2Data[rowHeaderColumn].IndexOf(rowHeader);
-
-                    if (index1 == -1 || index2 == -1)
                         continue;
 
                     var value1 = file1Data[header][index1];
@@ -83,7 +97,7 @@ public static class DiffEngine
                     {
                         string valueDifference = $"{header}: '{value1}' -> '{value2}'";
                         string column0Value = $"(Row {Math.Min(index1, index2) + 1}) {rowHeader}";
-                        int columnIndex = allHeaders.ToList().IndexOf(header);
+                        int columnIndex = headerIndexMap.TryGetValue(header, out var idx) ? idx : 0;
 
                         lock (groupedDifferences)
                         {
@@ -97,20 +111,19 @@ public static class DiffEngine
             }
             else if (includeNewRows && !inFile1)
             {
-                foreach (var header in allHeaders)
+                if (!file2RowIndices.TryGetValue(rowHeader, out int index2))
+                    return;
+
+                foreach (var header in headerList)
                 {
                     if (!file2Data.ContainsKey(header))
-                        continue;
-
-                    int index2 = file2Data[rowHeaderColumn].IndexOf(rowHeader);
-                    if (index2 == -1)
                         continue;
 
                     var value2 = file2Data[header][index2];
 
                     string valueDifference = $"{header}: '{value2}'";
                     string column0Value = $"(Row {index2 + 1}) {rowHeader}";
-                    int columnIndex = allHeaders.ToList().IndexOf(header);
+                    int columnIndex = headerIndexMap.TryGetValue(header, out var idx) ? idx : 0;
 
                     lock (groupedDifferences)
                     {
