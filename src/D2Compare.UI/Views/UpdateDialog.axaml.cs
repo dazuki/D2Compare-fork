@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Windows.Input;
-
 using Avalonia.Controls;
-
 using Markdown.Avalonia;
 
 namespace D2Compare.Views;
@@ -15,7 +13,8 @@ public partial class UpdateDialog : Window
         InitializeComponent();
     }
 
-    public UpdateDialog(string version, string releaseNotes) : this()
+    public UpdateDialog(string version, string releaseNotes)
+        : this()
     {
         Title = $"Update to {version}";
 
@@ -55,7 +54,10 @@ public partial class UpdateDialog : Window
 
         public void Execute(object? parameter)
         {
-            if (parameter is string url && url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            if (
+                parameter is string url
+                && url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            )
                 Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
         }
     }

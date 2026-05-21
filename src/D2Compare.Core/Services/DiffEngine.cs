@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-
 using D2Compare.Core.Models;
 
 namespace D2Compare.Core.Services;
@@ -8,7 +7,8 @@ public static class DiffEngine
 {
     public static Dictionary<T, int> GetRemovedRows<T>(
         IReadOnlyList<T> file1Rows,
-        IReadOnlyList<T> file2Rows)
+        IReadOnlyList<T> file2Rows
+    )
         where T : notnull
     {
         var removedRows = new Dictionary<T, int>();
@@ -51,7 +51,8 @@ public static class DiffEngine
         Dictionary<string, List<string>> file2Data,
         HashSet<string> allHeaders,
         string rowHeaderColumn,
-        bool includeNewRows)
+        bool includeNewRows
+    )
     {
         var groupedDifferences = new Dictionary<string, List<(string Diff, string ColIndex)>>();
         var newRowKeys = new HashSet<string>();
@@ -78,28 +79,60 @@ public static class DiffEngine
         var allRowHeaders = new HashSet<RowInstanceKey>(file1RowKeys);
         allRowHeaders.UnionWith(file2RowKeys);
 
-        Parallel.ForEach(allRowHeaders, rowKey =>
-        {
-            bool inFile1 = file1RowIndices.ContainsKey(rowKey);
-            bool inFile2 = file2RowIndices.ContainsKey(rowKey);
-
-            if (inFile1 && inFile2)
+        Parallel.ForEach(
+            allRowHeaders,
+            rowKey =>
             {
-                int index1 = file1RowIndices[rowKey];
-                int index2 = file2RowIndices[rowKey];
+                bool inFile1 = file1RowIndices.ContainsKey(rowKey);
+                bool inFile2 = file2RowIndices.ContainsKey(rowKey);
 
-                foreach (var header in headerList)
+                if (inFile1 && inFile2)
                 {
-                    if (!file1Data.ContainsKey(header) || !file2Data.ContainsKey(header))
-                        continue;
+                    int index1 = file1RowIndices[rowKey];
+                    int index2 = file2RowIndices[rowKey];
 
-                    var value1 = file1Data[header][index1];
-                    var value2 = file2Data[header][index2];
-
-                    if (value1 != value2)
+                    foreach (var header in headerList)
                     {
-                        string valueDifference = $"{header}: '{value1}' -> '{value2}'";
-                        string column0Value = $"(Row {Math.Min(index1, index2) + 1}) {rowKey.Name}";
+                        if (!file1Data.ContainsKey(header) || !file2Data.ContainsKey(header))
+                            continue;
+
+                        var value1 = file1Data[header][index1];
+                        var value2 = file2Data[header][index2];
+
+                        if (value1 != value2)
+                        {
+                            string valueDifference = $"{header}: '{value1}' -> '{value2}'";
+                            string column0Value =
+                                $"(Row {Math.Min(index1, index2) + 1}) {rowKey.Name}";
+                            int columnIndex = headerIndexMap.TryGetValue(header, out var idx)
+                                ? idx
+                                : 0;
+
+                            lock (groupedDifferences)
+                            {
+                                if (!groupedDifferences.ContainsKey(column0Value))
+                                    groupedDifferences[column0Value] = new List<(string, string)>();
+
+                                groupedDifferences[column0Value]
+                                    .Add((valueDifference, columnIndex.ToString()));
+                            }
+                        }
+                    }
+                }
+                else if (includeNewRows && !inFile1)
+                {
+                    if (!file2RowIndices.TryGetValue(rowKey, out int index2))
+                        return;
+
+                    foreach (var header in headerList)
+                    {
+                        if (!file2Data.ContainsKey(header))
+                            continue;
+
+                        var value2 = file2Data[header][index2];
+
+                        string valueDifference = $"{header}: '{value2}'";
+                        string column0Value = $"(Row {index2 + 1}) {rowKey.Name}";
                         int columnIndex = headerIndexMap.TryGetValue(header, out var idx) ? idx : 0;
 
                         lock (groupedDifferences)
@@ -107,45 +140,25 @@ public static class DiffEngine
                             if (!groupedDifferences.ContainsKey(column0Value))
                                 groupedDifferences[column0Value] = new List<(string, string)>();
 
-                            groupedDifferences[column0Value].Add((valueDifference, columnIndex.ToString()));
+                            groupedDifferences[column0Value]
+                                .Add((valueDifference, columnIndex.ToString()));
+                            newRowKeys.Add(column0Value);
                         }
                     }
                 }
             }
-            else if (includeNewRows && !inFile1)
-            {
-                if (!file2RowIndices.TryGetValue(rowKey, out int index2))
-                    return;
-
-                foreach (var header in headerList)
-                {
-                    if (!file2Data.ContainsKey(header))
-                        continue;
-
-                    var value2 = file2Data[header][index2];
-
-                    string valueDifference = $"{header}: '{value2}'";
-                    string column0Value = $"(Row {index2 + 1}) {rowKey.Name}";
-                    int columnIndex = headerIndexMap.TryGetValue(header, out var idx) ? idx : 0;
-
-                    lock (groupedDifferences)
-                    {
-                        if (!groupedDifferences.ContainsKey(column0Value))
-                            groupedDifferences[column0Value] = new List<(string, string)>();
-
-                        groupedDifferences[column0Value].Add((valueDifference, columnIndex.ToString()));
-                        newRowKeys.Add(column0Value);
-                    }
-                }
-            }
-        });
+        );
 
         return groupedDifferences
             .OrderBy(pair => int.Parse(Regex.Match(pair.Key, @"\(Row (\d+)\)").Groups[1].Value))
             .Select(pair =>
             {
                 var sorted = pair.Value.OrderBy(t => int.Parse(t.ColIndex)).ToList();
-                return new DiffGroup(pair.Key, sorted.Select(t => t.Diff).ToList(), newRowKeys.Contains(pair.Key));
+                return new DiffGroup(
+                    pair.Key,
+                    sorted.Select(t => t.Diff).ToList(),
+                    newRowKeys.Contains(pair.Key)
+                );
             })
             .ToList();
     }

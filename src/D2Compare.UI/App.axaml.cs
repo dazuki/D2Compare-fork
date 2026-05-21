@@ -1,14 +1,11 @@
-using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
-
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
 using D2Compare.ViewModels;
 using D2Compare.Views;
-
 using Microsoft.Win32;
 
 namespace D2Compare;
@@ -71,8 +68,8 @@ public class App : Application
 
         try
         {
-            var exePath = Environment.ProcessPath
-                          ?? Process.GetCurrentProcess().MainModule?.FileName;
+            var exePath =
+                Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
 
             if (string.IsNullOrWhiteSpace(exePath))
                 return;

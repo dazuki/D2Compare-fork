@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-
 using D2Compare.ViewModels;
 
 namespace D2Compare.Views;
@@ -16,7 +15,8 @@ public partial class MainWindow : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
-        if (DataContext is not MainViewModel vm) return;
+        if (DataContext is not MainViewModel vm)
+            return;
         var s = vm.Settings;
 
         Width = s.WindowWidth;
@@ -34,7 +34,8 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (DataContext is not MainViewModel vm) return;
+        if (DataContext is not MainViewModel vm)
+            return;
         var s = vm.Settings;
 
         s.IsMaximized = WindowState == WindowState.Maximized;

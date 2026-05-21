@@ -2,19 +2,15 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
 using D2Compare.Core.Models;
 using D2Compare.Core.Services;
 using D2Compare.Services;
 using D2Compare.Views;
-
 using Microsoft.Win32;
 
 namespace D2Compare.ViewModels;
@@ -23,8 +19,12 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly TopLevel _topLevel;
 
-    [ObservableProperty] private ObservableCollection<string> _sourceVersions = new();
-    [ObservableProperty] private ObservableCollection<string> _targetVersions = new();
+    [ObservableProperty]
+    private ObservableCollection<string> _sourceVersions = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _targetVersions = new();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSourceCustom))]
     private int _selectedSourceIndex = -1;
@@ -33,16 +33,30 @@ public partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsTargetCustom))]
     private int _selectedTargetIndex = -1;
 
-    [ObservableProperty] private ObservableCollection<string> _fileList = new();
-    [ObservableProperty] private int _selectedFileIndex = -1;
+    [ObservableProperty]
+    private ObservableCollection<string> _fileList = new();
 
-    [ObservableProperty] private bool _includeNewRows;
-    [ObservableProperty] private bool _showOnlyNewRows;
-    [ObservableProperty] private bool _omitUnchangedFiles = true;
-    [ObservableProperty] private bool _batchReloadNeeded;
-    [ObservableProperty] private bool _isDarkMode;
+    [ObservableProperty]
+    private int _selectedFileIndex = -1;
 
-    [ObservableProperty] private bool _convertColumns = true;
+    [ObservableProperty]
+    private bool _includeNewRows;
+
+    [ObservableProperty]
+    private bool _showOnlyNewRows;
+
+    [ObservableProperty]
+    private bool _omitUnchangedFiles = true;
+
+    [ObservableProperty]
+    private bool _batchReloadNeeded;
+
+    [ObservableProperty]
+    private bool _isDarkMode;
+
+    [ObservableProperty]
+    private bool _convertColumns = true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRowModeNone))]
     [NotifyPropertyChangedFor(nameof(IsRowModeAppendOriginal))]
@@ -53,48 +67,93 @@ public partial class MainViewModel : ObservableObject
     public bool IsRowModeNone
     {
         get => RowConversionMode == RowConversionMode.None;
-        set { if (value) RowConversionMode = RowConversionMode.None; }
+        set
+        {
+            if (value)
+                RowConversionMode = RowConversionMode.None;
+        }
     }
 
     // Append original data at end
     public bool IsRowModeAppendOriginal
     {
         get => RowConversionMode == RowConversionMode.AppendOriginalAtEnd;
-        set { if (value) RowConversionMode = RowConversionMode.AppendOriginalAtEnd; }
+        set
+        {
+            if (value)
+                RowConversionMode = RowConversionMode.AppendOriginalAtEnd;
+        }
     }
 
     // Append target data at end
     public bool IsRowModeAppendTarget
     {
         get => RowConversionMode == RowConversionMode.AppendTargetAtEnd;
-        set { if (value) RowConversionMode = RowConversionMode.AppendTargetAtEnd; }
+        set
+        {
+            if (value)
+                RowConversionMode = RowConversionMode.AppendTargetAtEnd;
+        }
     }
 
-    [ObservableProperty] private string _statusText = "";
-    [ObservableProperty] private bool _isStatusWarning;
-    [ObservableProperty] private string _searchText = "";
-    [ObservableProperty] private string _activeSearchTerm = "";
-    [ObservableProperty] private string _matchLabel = "";
-    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty]
+    private string _statusText = "";
 
+    [ObservableProperty]
+    private bool _isStatusWarning;
 
-    [ObservableProperty] private FormattedDocument? _columnsDocument;
-    [ObservableProperty] private FormattedDocument? _rowsDocument;
-    [ObservableProperty] private FormattedDocument? _valuesDocument;
-    [ObservableProperty] private FormattedDocument? _filesDocument;
+    [ObservableProperty]
+    private string _searchText = "";
 
-    [ObservableProperty] private int _columnsAdded;
-    [ObservableProperty] private int _columnsRemoved;
-    [ObservableProperty] private int _columnsChanged;
-    [ObservableProperty] private int _rowsAdded;
-    [ObservableProperty] private int _rowsRemoved;
-    [ObservableProperty] private int _rowsChanged;
-    [ObservableProperty] private int _valuesChanged;
-    [ObservableProperty] private int _valuesNew;
+    [ObservableProperty]
+    private string _activeSearchTerm = "";
+
+    [ObservableProperty]
+    private string _matchLabel = "";
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private FormattedDocument? _columnsDocument;
+
+    [ObservableProperty]
+    private FormattedDocument? _rowsDocument;
+
+    [ObservableProperty]
+    private FormattedDocument? _valuesDocument;
+
+    [ObservableProperty]
+    private FormattedDocument? _filesDocument;
+
+    [ObservableProperty]
+    private int _columnsAdded;
+
+    [ObservableProperty]
+    private int _columnsRemoved;
+
+    [ObservableProperty]
+    private int _columnsChanged;
+
+    [ObservableProperty]
+    private int _rowsAdded;
+
+    [ObservableProperty]
+    private int _rowsRemoved;
+
+    [ObservableProperty]
+    private int _rowsChanged;
+
+    [ObservableProperty]
+    private int _valuesChanged;
+
+    [ObservableProperty]
+    private int _valuesNew;
 
     public bool HasNoFileChanges => FilesDocument is null || FilesDocument.Lines.Count == 0;
 
-    partial void OnFilesDocumentChanged(FormattedDocument? value) => OnPropertyChanged(nameof(HasNoFileChanges));
+    partial void OnFilesDocumentChanged(FormattedDocument? value) =>
+        OnPropertyChanged(nameof(HasNoFileChanges));
 
     public AppSettings Settings => _settings;
     private readonly AppSettings _settings;
@@ -109,10 +168,17 @@ public partial class MainViewModel : ObservableObject
     public bool IsTargetCustom => SelectedTargetIndex >= _availableVersions.Count;
 
     // Auto-update
-    [ObservableProperty] private UpdateInfo? _pendingUpdate;
-    [ObservableProperty] private bool _isDownloadingUpdate;
-    [ObservableProperty] private double _updateDownloadProgress;
-    [ObservableProperty] private string _updateStatusText = "";
+    [ObservableProperty]
+    private UpdateInfo? _pendingUpdate;
+
+    [ObservableProperty]
+    private bool _isDownloadingUpdate;
+
+    [ObservableProperty]
+    private double _updateDownloadProgress;
+
+    [ObservableProperty]
+    private string _updateStatusText = "";
 
     public bool HasPendingUpdate => PendingUpdate is not null;
     public string UpdateAvailableText =>
@@ -144,7 +210,10 @@ public partial class MainViewModel : ObservableObject
         var customIndex = _availableVersions.Count;
 
         // Restore custom paths before setting indices (only if directory still exists)
-        if (!string.IsNullOrEmpty(_settings.CustomSourcePath) && Directory.Exists(_settings.CustomSourcePath))
+        if (
+            !string.IsNullOrEmpty(_settings.CustomSourcePath)
+            && Directory.Exists(_settings.CustomSourcePath)
+        )
         {
             _sourceFolderPath = _settings.CustomSourcePath;
             SourceVersions[customIndex] = _settings.CustomSourcePath;
@@ -159,7 +228,10 @@ public partial class MainViewModel : ObservableObject
             IsStatusWarning = true;
         }
 
-        if (!string.IsNullOrEmpty(_settings.CustomTargetPath) && Directory.Exists(_settings.CustomTargetPath))
+        if (
+            !string.IsNullOrEmpty(_settings.CustomTargetPath)
+            && Directory.Exists(_settings.CustomTargetPath)
+        )
         {
             _targetFolderPath = _settings.CustomTargetPath;
             TargetVersions[customIndex] = _settings.CustomTargetPath;
@@ -174,14 +246,26 @@ public partial class MainViewModel : ObservableObject
             IsStatusWarning = true;
         }
 
-        if (_settings.SelectedSourceIndex >= 0 && _settings.SelectedSourceIndex < SourceVersions.Count)
+        if (
+            _settings.SelectedSourceIndex >= 0
+            && _settings.SelectedSourceIndex < SourceVersions.Count
+        )
         {
-            if (_settings.SelectedSourceIndex < customIndex || !string.IsNullOrEmpty(_settings.CustomSourcePath))
+            if (
+                _settings.SelectedSourceIndex < customIndex
+                || !string.IsNullOrEmpty(_settings.CustomSourcePath)
+            )
                 SelectedSourceIndex = _settings.SelectedSourceIndex;
         }
-        if (_settings.SelectedTargetIndex >= 0 && _settings.SelectedTargetIndex < TargetVersions.Count)
+        if (
+            _settings.SelectedTargetIndex >= 0
+            && _settings.SelectedTargetIndex < TargetVersions.Count
+        )
         {
-            if (_settings.SelectedTargetIndex < customIndex || !string.IsNullOrEmpty(_settings.CustomTargetPath))
+            if (
+                _settings.SelectedTargetIndex < customIndex
+                || !string.IsNullOrEmpty(_settings.CustomTargetPath)
+            )
                 SelectedTargetIndex = _settings.SelectedTargetIndex;
         }
 
@@ -191,7 +275,8 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedSourceIndexChanged(int value)
     {
-        if (value < 0) return;
+        if (value < 0)
+            return;
 
         if (value < _availableVersions.Count)
             _sourceFolderPath = _availableVersions[value].GetPath();
@@ -205,7 +290,8 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedTargetIndexChanged(int value)
     {
-        if (value < 0) return;
+        if (value < 0)
+            return;
 
         if (value < _availableVersions.Count)
             _targetFolderPath = _availableVersions[value].GetPath();
@@ -221,14 +307,16 @@ public partial class MainViewModel : ObservableObject
     {
         OpenSourceFileCommand.NotifyCanExecuteChanged();
         OpenTargetFileCommand.NotifyCanExecuteChanged();
-        if (value < 0 || value >= FileList.Count) return;
+        if (value < 0 || value >= FileList.Count)
+            return;
         BatchReloadNeeded = false;
         _ = RunSingleComparisonAsync();
     }
 
     partial void OnIncludeNewRowsChanged(bool value)
     {
-        if (!value) ShowOnlyNewRows = false;
+        if (!value)
+            ShowOnlyNewRows = false;
         if (SelectedFileIndex >= 0 && _sourceFolderPath.Length > 0)
             _ = RunSingleComparisonAsync();
         else if (_batchResults.Count > 0)
@@ -257,7 +345,9 @@ public partial class MainViewModel : ObservableObject
 
         // Yield a frame so the loading indicator renders before the heavy highlight rebuild
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-            () => { }, Avalonia.Threading.DispatcherPriority.Render);
+            () => { },
+            Avalonia.Threading.DispatcherPriority.Render
+        );
 
         ActiveSearchTerm = SearchText;
 
@@ -290,7 +380,8 @@ public partial class MainViewModel : ObservableObject
                     while (pos < span.Text.Length)
                     {
                         int idx = span.Text.IndexOf(term, pos, StringComparison.OrdinalIgnoreCase);
-                        if (idx == -1) break;
+                        if (idx == -1)
+                            break;
                         c++;
                         pos = idx + term.Length;
                     }
@@ -307,7 +398,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task BatchLoad()
     {
-        if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0) return;
+        if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0)
+            return;
         if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath))
         {
             StatusText = "One or both folder paths no longer exist";
@@ -327,7 +419,8 @@ public partial class MainViewModel : ObservableObject
             var omitUnchanged = OmitUnchangedFiles;
 
             _batchResults = await Task.Run(() =>
-                CompareService.CompareFolder(sourcePath, targetPath, includeNew));
+                CompareService.CompareFolder(sourcePath, targetPath, includeNew)
+            );
 
             SelectedFileIndex = -1;
             RebuildBatchDocuments();
@@ -370,15 +463,19 @@ public partial class MainViewModel : ObservableObject
         }
 
         var storage = _topLevel.StorageProvider;
-        if (!storage.CanPickFolder) return;
+        if (!storage.CanPickFolder)
+            return;
 
-        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Select Output Folder for Converted Files",
-            AllowMultiple = false,
-        });
+        var folders = await storage.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions
+            {
+                Title = "Select Output Folder for Converted Files",
+                AllowMultiple = false,
+            }
+        );
 
-        if (folders.Count == 0) return;
+        if (folders.Count == 0)
+            return;
 
         var outputPath = folders[0].Path.LocalPath;
         IsLoading = true;
@@ -392,7 +489,8 @@ public partial class MainViewModel : ObservableObject
                 outputPath,
                 ConvertColumns,
                 RowConversionMode,
-                name => StatusText = $"Converting {name}...");
+                name => StatusText = $"Converting {name}..."
+            );
             StatusText = $"Done. Files written to {outputPath}";
         }
         catch (Exception ex)
@@ -418,8 +516,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private static void OpenOriginalProject() =>
-        OpenUrl("https://github.com/locbones/D2Compare");
+    private static void OpenOriginalProject() => OpenUrl("https://github.com/locbones/D2Compare");
 
     private bool HasFileSelected() => SelectedFileIndex >= 0 && SelectedFileIndex < FileList.Count;
 
@@ -443,7 +540,6 @@ public partial class MainViewModel : ObservableObject
         OpenFileViewer(filePath, role: "--target", originPath: _targetFolderPath);
     }
 
-
     private void OpenFileViewer(string filePath, string role, string originPath)
     {
         if (!File.Exists(filePath))
@@ -465,35 +561,32 @@ public partial class MainViewModel : ObservableObject
                 {
                     FileName = viewerPath,
                     Arguments = args,
-                    UseShellExecute = false
+                    UseShellExecute = false,
                 };
             }
             else
             {
-                psi = new ProcessStartInfo
-                {
-                    FileName = filePath,
-                    UseShellExecute = true
-                };
+                psi = new ProcessStartInfo { FileName = filePath, UseShellExecute = true };
             }
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             var linuxViewerPath = _settings.LinuxViewerPath;
 
-            psi = !string.IsNullOrWhiteSpace(linuxViewerPath) && File.Exists(linuxViewerPath)
-                ? new ProcessStartInfo
-                {
-                    FileName = linuxViewerPath,
-                    Arguments = args,
-                    UseShellExecute = false
-                }
-                : new ProcessStartInfo
-                {
-                    FileName = "xdg-open",
-                    Arguments = $"\"{filePath}\"",
-                    UseShellExecute = false
-                };
+            psi =
+                !string.IsNullOrWhiteSpace(linuxViewerPath) && File.Exists(linuxViewerPath)
+                    ? new ProcessStartInfo
+                    {
+                        FileName = linuxViewerPath,
+                        Arguments = args,
+                        UseShellExecute = false,
+                    }
+                    : new ProcessStartInfo
+                    {
+                        FileName = "xdg-open",
+                        Arguments = $"\"{filePath}\"",
+                        UseShellExecute = false,
+                    };
         }
         else
         {
@@ -519,28 +612,36 @@ public partial class MainViewModel : ObservableObject
         var omit = OmitUnchangedFiles;
 
         var colResults = omit
-            ? _batchResults.Where(r => r.ChangedColumns.Count > 0 || r.AddedColumns.Count > 0 || r.RemovedColumns.Count > 0)
+            ? _batchResults.Where(r =>
+                r.ChangedColumns.Count > 0 || r.AddedColumns.Count > 0 || r.RemovedColumns.Count > 0
+            )
             : _batchResults;
         var rowResults = omit
-            ? _batchResults.Where(r => r.ChangedRows.Count > 0 || r.AddedRows.Count > 0 || r.RemovedRows.Count > 0)
+            ? _batchResults.Where(r =>
+                r.ChangedRows.Count > 0 || r.AddedRows.Count > 0 || r.RemovedRows.Count > 0
+            )
             : _batchResults;
         var valResults = omit
             ? _batchResults.Where(r => r.GroupedDifferences.Count > 0)
             : _batchResults;
 
         ColumnsDocument = FormattedTextBuilder.MergeDocuments(
-            colResults.Select(r => FormattedTextBuilder.BuildColumnDiffs(r, true)));
+            colResults.Select(r => FormattedTextBuilder.BuildColumnDiffs(r, true))
+        );
         RowsDocument = FormattedTextBuilder.MergeDocuments(
-            rowResults.Select(r => FormattedTextBuilder.BuildRowDiffs(r, true)));
+            rowResults.Select(r => FormattedTextBuilder.BuildRowDiffs(r, true))
+        );
         var onlyNew = ShowOnlyNewRows;
         ValuesDocument = FormattedTextBuilder.MergeDocuments(
-            valResults.Select(r => FormattedTextBuilder.BuildValueDiffs(r, true, onlyNew)));
+            valResults.Select(r => FormattedTextBuilder.BuildValueDiffs(r, true, onlyNew))
+        );
         UpdateStats(_batchResults);
     }
 
     private async Task RunSingleComparisonAsync()
     {
-        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count) return;
+        if (SelectedFileIndex < 0 || SelectedFileIndex >= FileList.Count)
+            return;
 
         var sourcePath = Path.Combine(_sourceFolderPath, FileList[SelectedFileIndex]);
         var targetPath = Path.Combine(_targetFolderPath, FileList[SelectedFileIndex]);
@@ -561,7 +662,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var result = await Task.Run(() =>
-                CompareService.CompareFile(sourcePath, targetPath, includeNew));
+                CompareService.CompareFile(sourcePath, targetPath, includeNew)
+            );
 
             ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
             RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
@@ -579,7 +681,14 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateStats(IEnumerable<CompareResult> results)
     {
-        int ca = 0, cr = 0, cc = 0, ra = 0, rr = 0, rc = 0, vc = 0, vn = 0;
+        int ca = 0,
+            cr = 0,
+            cc = 0,
+            ra = 0,
+            rr = 0,
+            rc = 0,
+            vc = 0,
+            vn = 0;
         foreach (var r in results)
         {
             ca += r.AddedColumns.Count;
@@ -590,20 +699,28 @@ public partial class MainViewModel : ObservableObject
             rc += r.ChangedRows.Count;
             foreach (var g in r.GroupedDifferences)
             {
-                if (g.IsNew) vn++;
-                else vc++;
+                if (g.IsNew)
+                    vn++;
+                else
+                    vc++;
             }
         }
-        ColumnsAdded = ca; ColumnsRemoved = cr; ColumnsChanged = cc;
-        RowsAdded = ra; RowsRemoved = rr; RowsChanged = rc;
+        ColumnsAdded = ca;
+        ColumnsRemoved = cr;
+        ColumnsChanged = cc;
+        RowsAdded = ra;
+        RowsRemoved = rr;
+        RowsChanged = rc;
         ValuesChanged = ShowOnlyNewRows ? 0 : vc;
         ValuesNew = vn;
     }
 
     private void OnTargetChanged()
     {
-        if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0) return;
-        if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath)) return;
+        if (_sourceFolderPath.Length == 0 || _targetFolderPath.Length == 0)
+            return;
+        if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath))
+            return;
 
         IsStatusWarning = false;
         StatusText = "";
@@ -620,13 +737,16 @@ public partial class MainViewModel : ObservableObject
     private async Task SelectCustomFolder(bool isSource)
     {
         var storage = _topLevel.StorageProvider;
-        if (!storage.CanPickFolder) return;
+        if (!storage.CanPickFolder)
+            return;
 
-        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = isSource ? "Select Source Folder" : "Select Target Folder",
-            AllowMultiple = false,
-        });
+        var folders = await storage.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions
+            {
+                Title = isSource ? "Select Source Folder" : "Select Target Folder",
+                AllowMultiple = false,
+            }
+        );
 
         if (folders.Count > 0)
         {
@@ -668,11 +788,13 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ApplyUpdate()
     {
-        if (PendingUpdate is null) return;
+        if (PendingUpdate is null)
+            return;
 
         var dialog = new UpdateDialog(PendingUpdate.Version, PendingUpdate.ReleaseNotes);
         var result = await dialog.ShowDialog<bool?>((Window)_topLevel);
-        if (result is not true) return;
+        if (result is not true)
+            return;
 
         IsDownloadingUpdate = true;
         UpdateStatusText = "Downloading...";
@@ -698,18 +820,26 @@ public partial class MainViewModel : ObservableObject
     private void DismissUpdate() => PendingUpdate = null;
 
     [RelayCommand(CanExecute = nameof(HasColumnsContent))]
-    private Task SaveColumnsAsText() => SaveDocumentAsText(ColumnsDocument, "Columns.Altered", "Columns Altered");
+    private Task SaveColumnsAsText() =>
+        SaveDocumentAsText(ColumnsDocument, "Columns.Altered", "Columns Altered");
+
     private bool HasColumnsContent() => ColumnsDocument is { Lines.Count: > 0 };
+
     public bool ColumnsHasContent => HasColumnsContent();
 
     [RelayCommand(CanExecute = nameof(HasRowsContent))]
-    private Task SaveRowsAsText() => SaveDocumentAsText(RowsDocument, "Rows.Altered", "Rows Altered");
+    private Task SaveRowsAsText() =>
+        SaveDocumentAsText(RowsDocument, "Rows.Altered", "Rows Altered");
+
     private bool HasRowsContent() => RowsDocument is { Lines.Count: > 0 };
+
     public bool RowsHasContent => HasRowsContent();
 
     [RelayCommand(CanExecute = nameof(HasValuesContent))]
     private Task SaveValuesAsText() => SaveDocumentAsText(ValuesDocument, "Values", "Values");
+
     private bool HasValuesContent() => ValuesDocument is { Lines.Count: > 0 };
+
     public bool ValuesHasContent => HasValuesContent();
 
     partial void OnColumnsDocumentChanged(FormattedDocument? value)
@@ -717,20 +847,27 @@ public partial class MainViewModel : ObservableObject
         SaveColumnsAsTextCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ColumnsHasContent));
     }
+
     partial void OnRowsDocumentChanged(FormattedDocument? value)
     {
         SaveRowsAsTextCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(RowsHasContent));
     }
+
     partial void OnValuesDocumentChanged(FormattedDocument? value)
     {
         SaveValuesAsTextCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ValuesHasContent));
     }
 
-    private async Task SaveDocumentAsText(FormattedDocument? document, string panelSuffix, string panelName)
+    private async Task SaveDocumentAsText(
+        FormattedDocument? document,
+        string panelSuffix,
+        string panelName
+    )
     {
-        if (document is null || document.Lines.Count == 0) return;
+        if (document is null || document.Lines.Count == 0)
+            return;
 
         bool isDisplayAll = _batchResults.Count > 0 && SelectedFileIndex < 0;
         string prefix;
@@ -742,25 +879,28 @@ public partial class MainViewModel : ObservableObject
             prefix = "output";
 
         var storage = _topLevel.StorageProvider;
-        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Save As Text",
-            SuggestedFileName = $"{prefix}-{panelSuffix}.txt",
-            FileTypeChoices = [new FilePickerFileType("Text File") { Patterns = ["*.txt"] }],
-        });
+        var file = await storage.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = "Save As Text",
+                SuggestedFileName = $"{prefix}-{panelSuffix}.txt",
+                FileTypeChoices = [new FilePickerFileType("Text File") { Patterns = ["*.txt"] }],
+            }
+        );
 
-        if (file is null) return;
+        if (file is null)
+            return;
 
-        var sourceName = SelectedSourceIndex >= 0 && SelectedSourceIndex < SourceVersions.Count
-            ? SourceVersions[SelectedSourceIndex] : "Unknown";
-        var targetName = SelectedTargetIndex >= 0 && SelectedTargetIndex < TargetVersions.Count
-            ? TargetVersions[SelectedTargetIndex] : "Unknown";
+        var sourceName =
+            SelectedSourceIndex >= 0 && SelectedSourceIndex < SourceVersions.Count
+                ? SourceVersions[SelectedSourceIndex]
+                : "Unknown";
+        var targetName =
+            SelectedTargetIndex >= 0 && SelectedTargetIndex < TargetVersions.Count
+                ? TargetVersions[SelectedTargetIndex]
+                : "Unknown";
 
-        var headerLines = new List<string>
-        {
-            $"Source:   {sourceName}",
-            $"Target:   {targetName}",
-        };
+        var headerLines = new List<string> { $"Source:   {sourceName}", $"Target:   {targetName}" };
         headerLines.Add($"File:     {(isDisplayAll ? "All Files" : $"{prefix}.txt")}");
         headerLines.Add($"Summary:  {panelName}");
         headerLines.Add(new string('-', 40));
@@ -770,7 +910,11 @@ public partial class MainViewModel : ObservableObject
         await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
     }
 
-    public void InitializeFromArguments(string? sourceFolder, string? targetFolder, string? filePath)
+    public void InitializeFromArguments(
+        string? sourceFolder,
+        string? targetFolder,
+        string? filePath
+    )
     {
         var customIndex = _availableVersions.Count;
 
@@ -806,11 +950,13 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(filePath))
         {
             // Ensure the file list is built if we have valid folders
-            if (FileList.Count == 0 &&
-                _sourceFolderPath.Length > 0 &&
-                _targetFolderPath.Length > 0 &&
-                Directory.Exists(_sourceFolderPath) &&
-                Directory.Exists(_targetFolderPath))
+            if (
+                FileList.Count == 0
+                && _sourceFolderPath.Length > 0
+                && _targetFolderPath.Length > 0
+                && Directory.Exists(_sourceFolderPath)
+                && Directory.Exists(_targetFolderPath)
+            )
             {
                 OnTargetChanged();
             }

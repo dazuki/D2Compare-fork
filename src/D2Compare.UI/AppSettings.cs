@@ -6,16 +6,18 @@ namespace D2Compare;
 
 public class AppSettings
 {
-    private static readonly string s_configPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+    private static readonly string s_configPath = RuntimeInformation.IsOSPlatform(
+        OSPlatform.Windows
+    )
         ? Path.Combine(AppContext.BaseDirectory, "D2Compare.settings.json")
         : Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".config", "D2Compare", "settings.json");
+            ".config",
+            "D2Compare",
+            "settings.json"
+        );
 
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        WriteIndented = true,
-    };
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     public bool IsDarkMode { get; set; }
     public int SelectedSourceIndex { get; set; } = -1;
@@ -40,7 +42,8 @@ public class AppSettings
         try
         {
             if (File.Exists(s_configPath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(s_configPath)) ?? new();
+                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(s_configPath))
+                    ?? new();
         }
         catch { }
 
