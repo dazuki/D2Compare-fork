@@ -25,6 +25,8 @@ public record VersionInfo(string DisplayName, string FolderName)
         new("2.9.0.0 (90471)", "90471"),
         new("3.0.0.0 (91636) - RoTW", "91636a"),
         new("3.0.0.0 (91636) - Expansion", "91636b"),
+        new("3.2.0.0 (92777) - RoTW", "92777a"),
+        new("3.2.0.0 (92777) - Expansion", "92777b"),
     ];
 
     public static IReadOnlyList<VersionInfo> GetAvailableVersions()
@@ -33,8 +35,12 @@ public record VersionInfo(string DisplayName, string FolderName)
         if (!Directory.Exists(txtRoot))
             return KnownVersions;
 
-        var knownByFolder = KnownVersions.ToDictionary(v => v.FolderName, StringComparer.OrdinalIgnoreCase);
-        var discoveredFolders = Directory.GetDirectories(txtRoot)
+        var knownByFolder = KnownVersions.ToDictionary(
+            v => v.FolderName,
+            StringComparer.OrdinalIgnoreCase
+        );
+        var discoveredFolders = Directory
+            .GetDirectories(txtRoot)
             .Select(Path.GetFileName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Cast<string>()
