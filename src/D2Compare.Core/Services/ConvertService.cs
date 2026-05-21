@@ -1,7 +1,7 @@
+using System.Text;
 using D2Compare.Core.Models;
 
 namespace D2Compare.Core.Services;
-
 
 public static class ConvertService
 {
@@ -12,20 +12,32 @@ public static class ConvertService
         string outputPath,
         bool convertColumns,
         RowConversionMode rowMode,
-        Action<string>? onProgress = null)
+        Action<string>? onProgress = null
+    )
     {
         Directory.CreateDirectory(outputPath);
 
-        var sourceFiles = Directory.GetFiles(sourcePath, "*.txt");
-        var targetFiles = Directory.GetFiles(targetPath, "*.txt");
+        // Directory.GetFiles glob is case-sensitive on Linux; D2R files may be
+        // extracted as uppercase .TXT, so filter the extension case-insensitively.
+        var sourceFiles = Directory
+            .GetFiles(sourcePath)
+            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var targetFiles = Directory
+            .GetFiles(targetPath)
+            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 
         foreach (var sourceFile in sourceFiles)
         {
             var fileName = Path.GetFileName(sourceFile);
-            var targetFile = Array.Find(targetFiles,
-                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+            var targetFile = Array.Find(
+                targetFiles,
+                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase)
+            );
 
-            if (targetFile is null) continue;
+            if (targetFile is null)
+                continue;
 
             onProgress?.Invoke(fileName);
 
@@ -35,10 +47,11 @@ public static class ConvertService
             var result = CompareService.CompareFile(sourceFile, targetFile, includeNewRows: true);
 
             var converted = ConvertFile(sourceData, targetData, result, convertColumns, rowMode);
-            if (converted is null) continue;
+            if (converted is null)
+                continue;
 
             var outFile = Path.Combine(outputPath, fileName);
-            WriteTsv(outFile, converted);
+            WriteTsv(outFile, converted, CsvParser.DetectEncoding(sourceFile));
         }
     }
 
@@ -49,12 +62,16 @@ public static class ConvertService
         Dictionary<string, List<string>> targetData,
         CompareResult result,
         bool convertColumns,
-        RowConversionMode rowMode)
+        RowConversionMode rowMode
+    )
     {
         var allHeaders = new HashSet<string>(sourceData.Keys);
         allHeaders.UnionWith(targetData.Keys);
-        var rowHeaderColumn = allHeaders.FirstOrDefault(h => sourceData.ContainsKey(h) && targetData.ContainsKey(h));
-        if (rowHeaderColumn is null) return null;
+        var rowHeaderColumn = allHeaders.FirstOrDefault(h =>
+            sourceData.ContainsKey(h) && targetData.ContainsKey(h)
+        );
+        if (rowHeaderColumn is null)
+            return null;
 
         var sourceKeyList = sourceData.Keys.ToList();
         var targetKeyList = targetData.Keys.ToList();
@@ -62,7 +79,10 @@ public static class ConvertService
         // Parse renames: "(Col N) old -> new" and "(Row N) old -> new"
         var columnRenameOldToNew = ParseRenames(result.ChangedColumns);
         var columnRenameNewToOld = columnRenameOldToNew.ToDictionary(kv => kv.New, kv => kv.Old);
-        var columnRenameOldToNewDict = columnRenameOldToNew.ToDictionary(kv => kv.Old, kv => kv.New);
+        var columnRenameOldToNewDict = columnRenameOldToNew.ToDictionary(
+            kv => kv.Old,
+            kv => kv.New
+        );
         var rowRenameOldToNew = ParseRenames(result.ChangedRows);
         var rowRenameNewToOld = rowRenameOldToNew.ToDictionary(kv => kv.New, kv => kv.Old);
         var rowRenameOldToNewDict = rowRenameOldToNew.ToDictionary(kv => kv.Old, kv => kv.New);
@@ -71,11 +91,23 @@ public static class ConvertService
         var sourceRowKeys = sourceData[rowHeaderColumn];
         var targetRowKeys = targetData[rowHeaderColumn];
 
-        var outputRowKeys = BuildOutputRowKeys(rowMode, sourceRowKeys, targetRowKeys,
-            rowRenameNewToOld, rowRenameOldToNewDict);
+        var outputRowKeys = BuildOutputRowKeys(
+            rowMode,
+            sourceRowKeys,
+            targetRowKeys,
+            rowRenameNewToOld,
+            rowRenameOldToNewDict
+        );
 
         if (rowMode != RowConversionMode.None)
-            outputRowKeys = ApplyVersionRowOrder(outputRowKeys, sourceData, targetData, sourceRowKeys, targetRowKeys, rowHeaderColumn);
+            outputRowKeys = ApplyVersionRowOrder(
+                outputRowKeys,
+                sourceData,
+                targetData,
+                sourceRowKeys,
+                targetRowKeys,
+                rowHeaderColumn
+            );
 
         var output = new Dictionary<string, List<string>>();
         foreach (var col in outputColumns)
@@ -87,23 +119,62 @@ public static class ConvertService
         {
             // When rowsFromTarget (AppendOriginal): resolve to source row; appended source-only rows have no target row
             // When !rowsFromTarget (AppendTarget): resolve to source row; appended target-only rows have no source row (or renamed source row).
-            string? sourceRowKey = rowsFromTarget ? (sourceRowKeys.Contains(outRowKey) ? outRowKey : (rowRenameNewToOld.TryGetValue(outRowKey, out var so) ? so : null)) : (sourceRowKeys.Contains(outRowKey) ? outRowKey : (rowRenameNewToOld.TryGetValue(outRowKey, out var oldK) ? oldK : null));
-            
+            string? sourceRowKey = rowsFromTarget
+                ? (
+                    sourceRowKeys.Contains(outRowKey)
+                        ? outRowKey
+                        : (rowRenameNewToOld.TryGetValue(outRowKey, out var so) ? so : null)
+                )
+                : (
+                    sourceRowKeys.Contains(outRowKey)
+                        ? outRowKey
+                        : (rowRenameNewToOld.TryGetValue(outRowKey, out var oldK) ? oldK : null)
+                );
+
             // When rowsFromTarget, only set targetRowKey if target actually has this row (appended source-only rows are not in target)
-            string? targetRowKey = rowsFromTarget ? (targetRowKeys.Contains(outRowKey) ? outRowKey : null) : (targetRowKeys.Contains(outRowKey) ? outRowKey : (rowRenameOldToNewDict.TryGetValue(outRowKey, out var tn) ? tn : null));
+            string? targetRowKey = rowsFromTarget
+                ? (targetRowKeys.Contains(outRowKey) ? outRowKey : null)
+                : (
+                    targetRowKeys.Contains(outRowKey)
+                        ? outRowKey
+                        : (rowRenameOldToNewDict.TryGetValue(outRowKey, out var tn) ? tn : null)
+                );
 
             int? sourceRowIndex = sourceRowKey is null ? null : sourceRowKeys.IndexOf(sourceRowKey);
             int? targetRowIndex = targetRowKey is null ? null : targetRowKeys.IndexOf(targetRowKey);
 
             foreach (var outCol in outputColumns)
             {
-                string? sourceCol = ResolveColumn(outCol, sourceKeyList, targetKeyList, columnRenameOldToNewDict, columnRenameNewToOld, fromTarget: convertColumns);
-                string? targetCol = ResolveColumn(outCol, sourceKeyList, targetKeyList, columnRenameOldToNewDict, columnRenameNewToOld, fromTarget: !convertColumns);
+                string? sourceCol = ResolveColumn(
+                    outCol,
+                    sourceKeyList,
+                    targetKeyList,
+                    columnRenameOldToNewDict,
+                    columnRenameNewToOld,
+                    fromTarget: convertColumns
+                );
+                string? targetCol = ResolveColumn(
+                    outCol,
+                    sourceKeyList,
+                    targetKeyList,
+                    columnRenameOldToNewDict,
+                    columnRenameNewToOld,
+                    fromTarget: !convertColumns
+                );
 
                 string value = "";
-                if (sourceCol is not null && sourceRowIndex is not null && sourceData[sourceCol].Count > sourceRowIndex.Value)
+                if (
+                    sourceCol is not null
+                    && sourceRowIndex is not null
+                    && sourceData[sourceCol].Count > sourceRowIndex.Value
+                )
                     value = sourceData[sourceCol][sourceRowIndex.Value];
-                if (string.IsNullOrEmpty(value) && targetCol is not null && targetRowIndex is not null && targetData[targetCol].Count > targetRowIndex.Value)
+                if (
+                    string.IsNullOrEmpty(value)
+                    && targetCol is not null
+                    && targetRowIndex is not null
+                    && targetData[targetCol].Count > targetRowIndex.Value
+                )
                     value = targetData[targetCol][targetRowIndex.Value];
 
                 output[outCol].Add(value);
@@ -118,7 +189,8 @@ public static class ConvertService
         List<string> sourceRowKeys,
         List<string> targetRowKeys,
         Dictionary<string, string> rowRenameNewToOld,
-        Dictionary<string, string> rowRenameOldToNewDict)
+        Dictionary<string, string> rowRenameOldToNewDict
+    )
     {
         switch (rowMode)
         {
@@ -153,29 +225,47 @@ public static class ConvertService
         Dictionary<string, List<string>> targetData,
         List<string> sourceRowKeys,
         List<string> targetRowKeys,
-        string rowHeaderColumn)
+        string rowHeaderColumn
+    )
     {
-        string? versionCol = sourceData.Keys.FirstOrDefault(k => string.Equals(k, "version", StringComparison.OrdinalIgnoreCase))
-            ?? targetData.Keys.FirstOrDefault(k => string.Equals(k, "version", StringComparison.OrdinalIgnoreCase));
-        if (versionCol is null) return rowKeys;
+        string? versionCol =
+            sourceData.Keys.FirstOrDefault(k =>
+                string.Equals(k, "version", StringComparison.OrdinalIgnoreCase)
+            )
+            ?? targetData.Keys.FirstOrDefault(k =>
+                string.Equals(k, "version", StringComparison.OrdinalIgnoreCase)
+            );
+        if (versionCol is null)
+            return rowKeys;
 
         string GetVersion(string rowKey)
         {
             var srcIdx = sourceRowKeys.IndexOf(rowKey);
-            if (srcIdx >= 0 && sourceData.ContainsKey(versionCol) && srcIdx < sourceData[versionCol].Count)
+            if (
+                srcIdx >= 0
+                && sourceData.ContainsKey(versionCol)
+                && srcIdx < sourceData[versionCol].Count
+            )
                 return sourceData[versionCol][srcIdx].Trim();
             var tgtIdx = targetRowKeys.IndexOf(rowKey);
-            if (tgtIdx >= 0 && targetData.ContainsKey(versionCol) && tgtIdx < targetData[versionCol].Count)
+            if (
+                tgtIdx >= 0
+                && targetData.ContainsKey(versionCol)
+                && tgtIdx < targetData[versionCol].Count
+            )
                 return targetData[versionCol][tgtIdx].Trim();
             return "";
         }
 
         int GetTier(string rowKey)
         {
-            if (string.Equals(rowKey, "Expansion", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(rowKey, "Expansion", StringComparison.OrdinalIgnoreCase))
+                return 1;
             var ver = GetVersion(rowKey);
-            if (ver == "0") return 0;
-            if (ver == "100") return 2;
+            if (ver == "0")
+                return 0;
+            if (ver == "100")
+                return 2;
             return 3;
         }
 
@@ -193,10 +283,12 @@ public static class ConvertService
         foreach (var s in changed)
         {
             var idx = s.IndexOf(") ", StringComparison.Ordinal);
-            if (idx < 0) continue;
+            if (idx < 0)
+                continue;
             var rest = s[(idx + 2)..];
             var arrow = rest.IndexOf(" -> ", StringComparison.Ordinal);
-            if (arrow < 0) continue;
+            if (arrow < 0)
+                continue;
             var oldName = rest[..arrow].Trim();
             var newName = rest[(arrow + 4)..].Trim();
             if (oldName.Length > 0 && newName.Length > 0)
@@ -212,23 +304,32 @@ public static class ConvertService
         List<string> targetKeyList,
         Dictionary<string, string> columnRenameOldToNew,
         Dictionary<string, string> columnRenameNewToOld,
-        bool fromTarget)
+        bool fromTarget
+    )
     {
         if (fromTarget)
         {
-            if (sourceKeyList.Contains(outputCol)) return outputCol;
+            if (sourceKeyList.Contains(outputCol))
+                return outputCol;
             return columnRenameNewToOld.TryGetValue(outputCol, out var oldCol) ? oldCol : null;
         }
-        if (targetKeyList.Contains(outputCol)) return outputCol;
+        if (targetKeyList.Contains(outputCol))
+            return outputCol;
         return columnRenameOldToNew.TryGetValue(outputCol, out var newCol) ? newCol : null;
     }
 
-    private static void WriteTsv(string filePath, Dictionary<string, List<string>> data)
+    // D2 TXT files require CRLF line endings; encoding mirrors the source file
+    // (Windows-1252 for Legacy, UTF-8 for D2R) so values round-trip exactly.
+    private static void WriteTsv(
+        string filePath,
+        Dictionary<string, List<string>> data,
+        Encoding encoding
+    )
     {
         var keys = data.Keys.ToList();
         var rowCount = keys.Count > 0 ? data[keys[0]].Count : 0;
 
-        using var writer = new StreamWriter(filePath);
+        using var writer = new StreamWriter(filePath, false, encoding) { NewLine = "\r\n" };
         writer.WriteLine(string.Join("\t", keys));
         for (int r = 0; r < rowCount; r++)
         {

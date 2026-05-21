@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
-
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 
@@ -17,7 +16,8 @@ public record UpdateInfo(string TagName, string Version, string DownloadUrl, str
 
 public class UpdateService
 {
-    private const string ApiUrl = "https://api.github.com/repos/dazuki/D2Compare-fork/releases/latest";
+    private const string ApiUrl =
+        "https://api.github.com/repos/dazuki/D2Compare-fork/releases/latest";
     private static readonly HttpClient s_http = new();
 
     static UpdateService()
@@ -46,7 +46,10 @@ public class UpdateService
                 return null;
 
             var current = Assembly.GetEntryAssembly()?.GetName().Version;
-            if (current is null || latest <= new System.Version(current.Major, current.Minor, current.Build))
+            if (
+                current is null
+                || latest <= new System.Version(current.Major, current.Minor, current.Build)
+            )
                 return null;
 
             var suffix = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
@@ -79,7 +82,8 @@ public class UpdateService
     public static async Task<string?> DownloadUpdateAsync(
         UpdateInfo info,
         IProgress<double> progress,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         var stagingDir = Path.Combine(Path.GetTempPath(), "D2Compare_update");
         if (Directory.Exists(stagingDir))
@@ -96,7 +100,8 @@ public class UpdateService
             using var response = await s_http.GetAsync(
                 info.DownloadUrl,
                 HttpCompletionOption.ResponseHeadersRead,
-                ct);
+                ct
+            );
             response.EnsureSuccessStatusCode();
 
             var total = response.Content.Headers.ContentLength ?? -1L;
@@ -157,7 +162,9 @@ public class UpdateService
         {
             var scriptPath = Path.Combine(Path.GetTempPath(), "d2compare_update.ps1");
             var exePath = Path.Combine(installDir, "D2Compare.exe");
-            File.WriteAllText(scriptPath, $$"""
+            File.WriteAllText(
+                scriptPath,
+                $$"""
                 $target = {{pid}}
                 while (Get-Process -Id $target -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }
                 # Backup settings
@@ -173,54 +180,60 @@ public class UpdateService
                 Start-Process "{{exePath}}"
                 Remove-Item -Path "{{stagingDir}}" -Recurse -Force
                 Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force
-                """);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File \"{scriptPath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            });
+                """
+            );
+            Process.Start(
+                new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments =
+                        $"-ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                }
+            );
         }
         else
         {
             var scriptPath = Path.Combine(Path.GetTempPath(), "d2compare_update.sh");
             var exePath = Path.Combine(installDir, "D2Compare");
-            File.WriteAllText(scriptPath, $"""
+            File.WriteAllText(
+                scriptPath,
+                $"""
                 #!/bin/bash
                 while kill -0 {pid} 2>/dev/null; do sleep 0.2; done
-                # Backup settings (Linux stores them in ~/.config, not installDir)
-                settings="$HOME/.config/D2Compare/{settingsFile}"
-                backup="{settingsBackup}"
-                [ -f "$settings" ] && cp "$settings" "$backup"
+                # Settings live in ~/.config, outside installDir, so the update leaves them intact
                 # Clean install directory
                 rm -rf "{installDir}/"*
                 # Copy new files
                 cp -rf "{stagingDir}/." "{installDir}/"
                 chmod +x "{exePath}"
-                # Restore settings
-                if [ -f "$backup" ]; then
-                    mkdir -p "$(dirname "$settings")"
-                    mv "$backup" "$settings"
-                fi
                 "{exePath}" &
                 rm -rf "{stagingDir}"
                 rm -- "$0"
-                """);
+                """
+            );
             // Make script executable
-            File.SetUnixFileMode(scriptPath,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            File.SetUnixFileMode(
+                scriptPath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+            );
             // Use setsid to fully detach from parent terminal session
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "setsid",
-                Arguments = $"bash \"{scriptPath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            });
+            Process.Start(
+                new ProcessStartInfo
+                {
+                    FileName = "setsid",
+                    Arguments = $"bash \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                }
+            );
         }
 
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (
+            Application.Current?.ApplicationLifetime
+            is IClassicDesktopStyleApplicationLifetime desktop
+        )
             desktop.Shutdown();
         else
             Environment.Exit(0);
@@ -254,6 +267,10 @@ public class UpdateService
 
     private static void CleanupFile(string path)
     {
-        try { File.Delete(path); } catch { }
+        try
+        {
+            File.Delete(path);
+        }
+        catch { }
     }
 }

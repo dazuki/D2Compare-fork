@@ -4,7 +4,11 @@ namespace D2Compare.Core.Services;
 
 public static class CompareService
 {
-    public static CompareResult CompareFile(string sourcePath, string targetPath, bool includeNewRows)
+    public static CompareResult CompareFile(
+        string sourcePath,
+        string targetPath,
+        bool includeNewRows
+    )
     {
         var sourceData = CsvParser.Parse(sourcePath);
         var targetData = CsvParser.Parse(targetPath);
@@ -12,12 +16,12 @@ public static class CompareService
         var allHeaders = new HashSet<string>(sourceData.Keys);
         allHeaders.UnionWith(targetData.Keys);
 
-        var rowHeaderColumn = allHeaders.FirstOrDefault(h => sourceData.ContainsKey(h) && targetData.ContainsKey(h));
+        var rowHeaderColumn = allHeaders.FirstOrDefault(h =>
+            sourceData.ContainsKey(h) && targetData.ContainsKey(h)
+        );
         if (rowHeaderColumn is null)
         {
-            return new CompareResult(
-                Path.GetFileName(sourcePath), [], [], [], [], [], [],
-                []);
+            return new CompareResult(Path.GetFileName(sourcePath), [], [], [], [], [], [], []);
         }
 
         // Column diffs
@@ -90,8 +94,11 @@ public static class CompareService
         {
             foreach (var removed in allRemovedRows)
             {
-                if (!processedAdded.Contains(added) && !processedRemoved.Contains(removed) &&
-                    SchemaFixProvider.IsKnownRename(added.Name, removed.Name, sourcePath))
+                if (
+                    !processedAdded.Contains(added)
+                    && !processedRemoved.Contains(removed)
+                    && SchemaFixProvider.IsKnownRename(added.Name, removed.Name, sourcePath)
+                )
                 {
                     var srcRow = sourceRowIndexMap[removed] + 1;
                     changedRows.Add($"(Row {srcRow}) {removed.Name} -> {added.Name}");
@@ -126,7 +133,12 @@ public static class CompareService
 
         // Value-level diffs
         var groupedDifferences = DiffEngine.GetGroupedDifferences(
-            sourceData, targetData, allHeaders, rowHeaderColumn, includeNewRows);
+            sourceData,
+            targetData,
+            allHeaders,
+            rowHeaderColumn,
+            includeNewRows
+        );
 
         return new CompareResult(
             Path.GetFileName(sourcePath),
@@ -136,22 +148,28 @@ public static class CompareService
             finalAddedRows,
             finalRemovedRows,
             changedRows,
-            groupedDifferences);
+            groupedDifferences
+        );
     }
 
     public static List<CompareResult> CompareFolder(
-        string sourcePath, string targetPath, bool includeNewRows,
-        Action<string>? onProgress = null)
+        string sourcePath,
+        string targetPath,
+        bool includeNewRows,
+        Action<string>? onProgress = null
+    )
     {
         var results = new List<CompareResult>();
-        var sourceFiles = Directory.GetFiles(sourcePath, "*.txt");
-        var targetFiles = Directory.GetFiles(targetPath, "*.txt");
+        var sourceFiles = GetTxtFiles(sourcePath);
+        var targetFiles = GetTxtFiles(targetPath);
 
         foreach (var sourceFile in sourceFiles)
         {
             var fileName = Path.GetFileName(sourceFile);
-            var targetFile = Array.Find(targetFiles,
-                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+            var targetFile = Array.Find(
+                targetFiles,
+                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase)
+            );
 
             if (targetFile is not null)
             {
@@ -162,4 +180,12 @@ public static class CompareService
 
         return results;
     }
+
+    // Directory.GetFiles glob is case-sensitive on Linux; D2R files may be
+    // extracted as uppercase .TXT, so filter the extension case-insensitively.
+    private static string[] GetTxtFiles(string path) =>
+        Directory
+            .GetFiles(path)
+            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 }
