@@ -245,22 +245,26 @@ public class UpdateService
         using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
         using var tarReader = new TarReader(gzipStream);
 
+        var outputRoot = Path.GetFullPath(outputDir) + Path.DirectorySeparatorChar;
+
         while (tarReader.GetNextEntry() is { } entry)
         {
+            var resolvedPath = Path.GetFullPath(Path.Combine(outputDir, entry.Name));
+            if (!resolvedPath.StartsWith(outputRoot, StringComparison.Ordinal))
+                continue;
+
             if (entry.EntryType is TarEntryType.Directory)
             {
-                var dirPath = Path.Combine(outputDir, entry.Name);
-                Directory.CreateDirectory(dirPath);
+                Directory.CreateDirectory(resolvedPath);
                 continue;
             }
 
             if (entry.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile)
             {
-                var filePath = Path.Combine(outputDir, entry.Name);
-                var dir = Path.GetDirectoryName(filePath);
+                var dir = Path.GetDirectoryName(resolvedPath);
                 if (dir is not null)
                     Directory.CreateDirectory(dir);
-                entry.ExtractToFile(filePath, overwrite: true);
+                entry.ExtractToFile(resolvedPath, overwrite: true);
             }
         }
     }

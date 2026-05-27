@@ -73,10 +73,9 @@ public static class CompareService
         var sourceRowKeys = RowInstanceKeyHelper.BuildKeys(sourceData[rowHeaderColumn]);
         var targetRowKeys = RowInstanceKeyHelper.BuildKeys(targetData[rowHeaderColumn]);
 
-        var addedRowsTask = Task.Run(() => targetRowKeys.Except(sourceRowKeys).ToList());
         var removedRowsDict = DiffEngine.GetRemovedRows(sourceRowKeys, targetRowKeys);
         var allRemovedRows = DiffEngine.ExpandCounts(removedRowsDict);
-        var addedRows = addedRowsTask.Result;
+        var addedRows = targetRowKeys.Except(sourceRowKeys).ToList();
 
         var sourceRowIndexMap = sourceRowKeys
             .Select((key, index) => new { key, index })

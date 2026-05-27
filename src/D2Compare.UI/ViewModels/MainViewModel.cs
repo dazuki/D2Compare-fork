@@ -672,10 +672,16 @@ public partial class MainViewModel : ObservableObject
 
             SearchText = "";
         }
+        catch (Exception ex)
+        {
+            StatusText = $"Comparison failed: {ex.Message}";
+            IsStatusWarning = true;
+        }
         finally
         {
             IsLoading = false;
-            StatusText = "";
+            if (!IsStatusWarning)
+                StatusText = "";
         }
     }
 
