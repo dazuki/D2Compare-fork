@@ -845,8 +845,8 @@ public partial class MainViewModel : ObservableObject
             UpdateStatusText = $"Downloading... {p:P0}";
         });
 
-        var stagingDir = await UpdateService.DownloadUpdateAsync(PendingUpdate, progress);
-        if (stagingDir is null)
+        var staged = await UpdateService.DownloadUpdateAsync(PendingUpdate, progress);
+        if (staged is null)
         {
             UpdateStatusText = "Download failed";
             IsDownloadingUpdate = false;
@@ -854,7 +854,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         UpdateStatusText = "Applying update...";
-        UpdateService.LaunchUpdateScriptAndExit(stagingDir);
+        UpdateService.LaunchUpdateScriptAndExit(staged);
     }
 
     [RelayCommand]

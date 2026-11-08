@@ -14,6 +14,9 @@ namespace D2Compare.Services;
 
 public record UpdateInfo(string TagName, string Version, string DownloadUrl, string ReleaseNotes);
 
+// WorkDir is the private temp folder holding everything; StagingDir has the extracted release
+public record StagedUpdate(string WorkDir, string StagingDir);
+
 public class UpdateService
 {
     private const string ApiUrl =
@@ -78,25 +81,23 @@ public class UpdateService
         return null;
     }
 
-    // Downloads and extracts the update archive. Returns staging directory path, or null on failure.
-    public static async Task<string?> DownloadUpdateAsync(
+    // Downloads and extracts the update archive into a fresh private temp folder.
+    // Returns null on failure.
+    public static async Task<StagedUpdate?> DownloadUpdateAsync(
         UpdateInfo info,
         IProgress<double> progress,
         CancellationToken ct = default
     )
     {
-        var stagingDir = Path.Combine(Path.GetTempPath(), "D2Compare_update");
-        if (Directory.Exists(stagingDir))
-            Directory.Delete(stagingDir, true);
-        Directory.CreateDirectory(stagingDir);
+        // Random name with owner-only permissions on Unix, so other local users can't plant files
+        var workDir = Directory.CreateTempSubdirectory("D2Compare_update_").FullName;
+        var stagingDir = Directory.CreateDirectory(Path.Combine(workDir, "staging")).FullName;
 
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        var archiveExt = isWindows ? ".zip" : ".tar.gz";
-        var archivePath = Path.Combine(Path.GetTempPath(), $"D2Compare_update{archiveExt}");
+        var archivePath = Path.Combine(workDir, isWindows ? "update.zip" : "update.tar.gz");
 
         try
         {
-            // Stream download with progress
             using var response = await s_http.GetAsync(
                 info.DownloadUrl,
                 HttpCompletionOption.ResponseHeadersRead,
@@ -105,130 +106,103 @@ public class UpdateService
             response.EnsureSuccessStatusCode();
 
             var total = response.Content.Headers.ContentLength ?? -1L;
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
-            await using var file = File.Create(archivePath);
-
-            var buffer = new byte[81920];
-            long downloaded = 0;
-            int read;
-            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+            await using (var stream = await response.Content.ReadAsStreamAsync(ct))
+            await using (var file = File.Create(archivePath))
             {
-                await file.WriteAsync(buffer.AsMemory(0, read), ct);
-                downloaded += read;
-                if (total > 0)
-                    progress.Report((double)downloaded / total);
+                var buffer = new byte[81920];
+                long downloaded = 0;
+                int read;
+                while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+                {
+                    await file.WriteAsync(buffer.AsMemory(0, read), ct);
+                    downloaded += read;
+                    if (total > 0)
+                        progress.Report((double)downloaded / total);
+                }
             }
-        }
-        catch
-        {
-            CleanupFile(archivePath);
-            return null;
-        }
 
-        // Extract
-        try
-        {
             if (isWindows)
-            {
                 ZipFile.ExtractToDirectory(archivePath, stagingDir, overwriteFiles: true);
-            }
             else
-            {
                 ExtractTarGz(archivePath, stagingDir);
-            }
 
-            CleanupFile(archivePath);
+            File.Delete(archivePath);
+            return new StagedUpdate(workDir, stagingDir);
         }
         catch
         {
-            CleanupFile(archivePath);
+            TryDeleteDirectory(workDir);
             return null;
         }
-
-        return stagingDir;
     }
 
-    // Writes a platform-specific update script, launches it, and exits the app.
-    // The script waits for this process to exit, copies new files, relaunches, and cleans up.
-    public static void LaunchUpdateScriptAndExit(string stagingDir)
+    // Launches a detached script that waits for this process to exit, copies the new
+    // files over the install, relaunches the app and removes the temp folder.
+    // Only files shipped in the release are overwritten; nothing else in the install
+    // folder is deleted. Paths are passed as arguments, never pasted into script text.
+    public static void LaunchUpdateScriptAndExit(StagedUpdate update)
     {
         var installDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-        var pid = Environment.ProcessId;
+        var pid = Environment.ProcessId.ToString();
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        const string settingsFile = "D2Compare.settings.json";
-        var settingsBackup = Path.Combine(Path.GetTempPath(), settingsFile);
 
+        ProcessStartInfo psi;
         if (isWindows)
         {
-            var scriptPath = Path.Combine(Path.GetTempPath(), "d2compare_update.ps1");
-            var exePath = Path.Combine(installDir, "D2Compare.exe");
-            File.WriteAllText(
-                scriptPath,
-                $$"""
-                $target = {{pid}}
-                while (Get-Process -Id $target -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }
-                # Backup settings
-                $settings = "{{installDir}}\{{settingsFile}}"
-                $backup = "{{settingsBackup}}"
-                if (Test-Path $settings) { Copy-Item $settings $backup -Force }
-                # Clean install directory
-                Get-ChildItem "{{installDir}}" -Recurse | Remove-Item -Recurse -Force
-                # Copy new files
-                Copy-Item -Path "{{stagingDir}}\*" -Destination "{{installDir}}" -Recurse -Force
-                # Restore settings
-                if (Test-Path $backup) { Copy-Item $backup $settings -Force; Remove-Item $backup -Force }
-                Start-Process "{{exePath}}"
-                Remove-Item -Path "{{stagingDir}}" -Recurse -Force
-                Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force
-                """
-            );
-            Process.Start(
-                new ProcessStartInfo
+            var scriptPath = Path.Combine(update.WorkDir, "update.ps1");
+            File.WriteAllText(scriptPath, WindowsScript);
+            psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (
+                var arg in new[]
                 {
-                    FileName = "powershell.exe",
-                    Arguments =
-                        $"-ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File \"{scriptPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-NonInteractive",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-File",
+                    scriptPath,
+                    pid,
+                    installDir,
+                    update.StagingDir,
+                    update.WorkDir,
+                    Path.Combine(installDir, "D2Compare.exe"),
                 }
-            );
+            )
+                psi.ArgumentList.Add(arg);
         }
         else
         {
-            var scriptPath = Path.Combine(Path.GetTempPath(), "d2compare_update.sh");
-            var exePath = Path.Combine(installDir, "D2Compare");
-            File.WriteAllText(
-                scriptPath,
-                $"""
-                #!/bin/bash
-                while kill -0 {pid} 2>/dev/null; do sleep 0.2; done
-                # Settings live in ~/.config, outside installDir, so the update leaves them intact
-                # Clean install directory
-                rm -rf "{installDir}/"*
-                # Copy new files
-                cp -rf "{stagingDir}/." "{installDir}/"
-                chmod +x "{exePath}"
-                "{exePath}" &
-                rm -rf "{stagingDir}"
-                rm -- "$0"
-                """
-            );
-            // Make script executable
-            File.SetUnixFileMode(
-                scriptPath,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
-            );
-            // Use setsid to fully detach from parent terminal session
-            Process.Start(
-                new ProcessStartInfo
+            var scriptPath = Path.Combine(update.WorkDir, "update.sh");
+            File.WriteAllText(scriptPath, UnixScript);
+            // setsid fully detaches the script from this process's terminal session
+            psi = new ProcessStartInfo
+            {
+                FileName = "setsid",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (
+                var arg in new[]
                 {
-                    FileName = "setsid",
-                    Arguments = $"bash \"{scriptPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
+                    "bash",
+                    scriptPath,
+                    pid,
+                    installDir,
+                    update.StagingDir,
+                    update.WorkDir,
+                    Path.Combine(installDir, "D2Compare"),
                 }
-            );
+            )
+                psi.ArgumentList.Add(arg);
         }
+
+        Process.Start(psi);
 
         if (
             Application.Current?.ApplicationLifetime
@@ -238,6 +212,34 @@ public class UpdateService
         else
             Environment.Exit(0);
     }
+
+    // Settings live next to the exe on Windows; never let an archive overwrite them
+    private const string WindowsScript = """
+        param([int]$TargetPid, [string]$InstallDir, [string]$StagingDir, [string]$WorkDir, [string]$ExePath)
+        while (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }
+        $sep = [System.IO.Path]::DirectorySeparatorChar
+        $root = [System.IO.Path]::GetFullPath($StagingDir).TrimEnd($sep) + $sep
+        foreach ($file in [System.IO.Directory]::EnumerateFiles($StagingDir, '*', 'AllDirectories')) {
+            $relative = $file.Substring($root.Length)
+            if ($relative -eq 'D2Compare.settings.json') { continue }
+            $dest = [System.IO.Path]::Combine($InstallDir, $relative)
+            [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($dest))
+            [System.IO.File]::Copy($file, $dest, $true)
+        }
+        Start-Process -FilePath $ExePath
+        Remove-Item -LiteralPath $WorkDir -Recurse -Force
+        """;
+
+    private const string UnixScript = """
+        #!/bin/bash
+        pid="$1"; install_dir="$2"; staging_dir="$3"; work_dir="$4"; exe="$5"
+        while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
+        rm -f -- "$staging_dir/D2Compare.settings.json"
+        cp -a -- "$staging_dir/." "$install_dir/"
+        chmod +x -- "$exe"
+        "$exe" >/dev/null 2>&1 &
+        rm -rf -- "$work_dir"
+        """;
 
     private static void ExtractTarGz(string archivePath, string outputDir)
     {
@@ -269,12 +271,13 @@ public class UpdateService
         }
     }
 
-    private static void CleanupFile(string path)
+    private static void TryDeleteDirectory(string path)
     {
         try
         {
-            File.Delete(path);
+            Directory.Delete(path, recursive: true);
         }
-        catch { }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
