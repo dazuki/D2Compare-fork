@@ -5,4 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DebugType>none</DebugType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="D2Compare.Core.Tests" />
+  </ItemGroup>
 </Project>

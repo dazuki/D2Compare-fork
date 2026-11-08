@@ -5,4 +5,7 @@
   <Folder Name="/src/D2Compare.UI/">
     <Project Path="src/D2Compare.UI/D2Compare.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/D2Compare.Core.Tests/D2Compare.Core.Tests.csproj" />
+  </Folder>
 </Solution>
