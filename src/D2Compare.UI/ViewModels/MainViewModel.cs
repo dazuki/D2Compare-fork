@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using D2Compare.Core.Models;
@@ -162,6 +163,9 @@ public partial class MainViewModel : ObservableObject
     private string _sourceFolderPath = "";
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
+
+    // Bumped by every new comparison so results from a superseded run are dropped
+    private int _comparisonGeneration;
 
     public string AppVersion => UpdateService.GetCurrentVersion();
     public bool IsSourceCustom => SelectedSourceIndex >= _availableVersions.Count;
@@ -379,10 +383,7 @@ public partial class MainViewModel : ObservableObject
         StatusText = string.IsNullOrEmpty(SearchText) ? "Clearing..." : "Searching...";
 
         // Yield a frame so the loading indicator renders before the heavy highlight rebuild
-        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-            () => { },
-            Avalonia.Threading.DispatcherPriority.Render
-        );
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
         ActiveSearchTerm = SearchText;
 
@@ -442,6 +443,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var generation = ++_comparisonGeneration;
         IsLoading = true;
         IsStatusWarning = false;
         StatusText = "Loading...";
@@ -451,21 +453,34 @@ public partial class MainViewModel : ObservableObject
             var sourcePath = _sourceFolderPath;
             var targetPath = _targetFolderPath;
             var includeNew = IncludeNewRows;
-            var omitUnchanged = OmitUnchangedFiles;
 
-            _batchResults = await Task.Run(() =>
+            var results = await Task.Run(() =>
                 CompareService.CompareFolder(sourcePath, targetPath, includeNew)
             );
+            if (generation != _comparisonGeneration)
+                return;
 
+            _batchResults = results;
             SelectedFileIndex = -1;
             RebuildBatchDocuments();
             BatchReloadNeeded = false;
             SearchText = "";
         }
+        catch (Exception ex)
+        {
+            if (generation != _comparisonGeneration)
+                return;
+            StatusText = $"Batch load failed: {ex.Message}";
+            IsStatusWarning = true;
+        }
         finally
         {
-            IsLoading = false;
-            StatusText = "";
+            if (generation == _comparisonGeneration)
+            {
+                IsLoading = false;
+                if (!IsStatusWarning)
+                    StatusText = "";
+            }
         }
     }
 
@@ -513,24 +528,33 @@ public partial class MainViewModel : ObservableObject
             return;
 
         var outputPath = folders[0].Path.LocalPath;
+        var sourcePath = _sourceFolderPath;
+        var targetPath = _targetFolderPath;
+        var convertColumns = ConvertColumns;
+        var rowMode = RowConversionMode;
         IsLoading = true;
+        IsStatusWarning = false;
         StatusText = "Converting...";
 
         try
         {
-            ConvertService.ConvertFolder(
-                _sourceFolderPath,
-                _targetFolderPath,
-                outputPath,
-                ConvertColumns,
-                RowConversionMode,
-                name => StatusText = $"Converting {name}..."
+            // Off the UI thread; progress is marshalled back so the status bar keeps updating
+            await Task.Run(() =>
+                ConvertService.ConvertFolder(
+                    sourcePath,
+                    targetPath,
+                    outputPath,
+                    convertColumns,
+                    rowMode,
+                    name => Dispatcher.UIThread.Post(() => StatusText = $"Converting {name}...")
+                )
             );
             StatusText = $"Done. Files written to {outputPath}";
         }
         catch (Exception ex)
         {
-            StatusText = $"Error: {ex.Message}";
+            StatusText = $"Conversion failed: {ex.Message}";
+            IsStatusWarning = true;
         }
         finally
         {
@@ -551,7 +575,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private static void OpenOriginalProject() => OpenUrl("https://github.com/locbones/D2Compare");
+    private void OpenOriginalProject() => OpenUrl("https://github.com/locbones/D2Compare");
 
     private bool HasFileSelected() => SelectedFileIndex >= 0 && SelectedFileIndex < FileList.Count;
 
@@ -582,53 +606,44 @@ public partial class MainViewModel : ObservableObject
 
         string absFilePath = Path.GetFullPath(filePath);
         string absOriginPath = Path.GetFullPath(originPath);
-        string args = $"{role} --path \"{absOriginPath}\" \"{absFilePath}\"";
+
+        string? viewerPath = null;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            viewerPath = GetWindowsViewerPathFromRegistry();
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            viewerPath = _settings.LinuxViewerPath;
 
         ProcessStartInfo psi;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (!string.IsNullOrWhiteSpace(viewerPath) && File.Exists(viewerPath))
         {
-            var viewerPath = GetWindowsViewerPathFromRegistry();
-
-            if (!string.IsNullOrWhiteSpace(viewerPath) && File.Exists(viewerPath))
-            {
-                psi = new ProcessStartInfo
-                {
-                    FileName = viewerPath,
-                    Arguments = args,
-                    UseShellExecute = false,
-                };
-            }
-            else
-            {
-                psi = new ProcessStartInfo { FileName = filePath, UseShellExecute = true };
-            }
+            psi = new ProcessStartInfo { FileName = viewerPath, UseShellExecute = false };
+            foreach (var arg in new[] { role, "--path", absOriginPath, absFilePath })
+                psi.ArgumentList.Add(arg);
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            var linuxViewerPath = _settings.LinuxViewerPath;
-
-            psi =
-                !string.IsNullOrWhiteSpace(linuxViewerPath) && File.Exists(linuxViewerPath)
-                    ? new ProcessStartInfo
-                    {
-                        FileName = linuxViewerPath,
-                        Arguments = args,
-                        UseShellExecute = false,
-                    }
-                    : new ProcessStartInfo
-                    {
-                        FileName = "xdg-open",
-                        Arguments = $"\"{filePath}\"",
-                        UseShellExecute = false,
-                    };
+            psi = new ProcessStartInfo { FileName = "xdg-open", UseShellExecute = false };
+            psi.ArgumentList.Add(absFilePath);
         }
         else
         {
-            throw new PlatformNotSupportedException("Unsupported operating system.");
+            psi = new ProcessStartInfo { FileName = absFilePath, UseShellExecute = true };
         }
 
-        Process.Start(psi);
+        TryStartProcess(psi, $"Could not open {Path.GetFileName(filePath)}");
+    }
+
+    private void TryStartProcess(ProcessStartInfo psi, string failureMessage)
+    {
+        try
+        {
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{failureMessage}: {ex.Message}";
+            IsStatusWarning = true;
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -646,16 +661,8 @@ public partial class MainViewModel : ObservableObject
     {
         var omit = OmitUnchangedFiles;
 
-        var colResults = omit
-            ? _batchResults.Where(r =>
-                r.ChangedColumns.Count > 0 || r.AddedColumns.Count > 0 || r.RemovedColumns.Count > 0
-            )
-            : _batchResults;
-        var rowResults = omit
-            ? _batchResults.Where(r =>
-                r.ChangedRows.Count > 0 || r.AddedRows.Count > 0 || r.RemovedRows.Count > 0
-            )
-            : _batchResults;
+        var colResults = omit ? _batchResults.Where(r => r.HasColumnChanges) : _batchResults;
+        var rowResults = omit ? _batchResults.Where(r => r.HasRowChanges) : _batchResults;
         var valResults = omit
             ? _batchResults.Where(r => r.GroupedDifferences.Count > 0)
             : _batchResults;
@@ -688,6 +695,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var generation = ++_comparisonGeneration;
         IsLoading = true;
         IsStatusWarning = false;
         StatusText = "Loading...";
@@ -699,6 +707,8 @@ public partial class MainViewModel : ObservableObject
             var result = await Task.Run(() =>
                 CompareService.CompareFile(sourcePath, targetPath, includeNew)
             );
+            if (generation != _comparisonGeneration)
+                return;
 
             ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
             RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
@@ -709,14 +719,19 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            if (generation != _comparisonGeneration)
+                return;
             StatusText = $"Comparison failed: {ex.Message}";
             IsStatusWarning = true;
         }
         finally
         {
-            IsLoading = false;
-            if (!IsStatusWarning)
-                StatusText = "";
+            if (generation == _comparisonGeneration)
+            {
+                IsLoading = false;
+                if (!IsStatusWarning)
+                    StatusText = "";
+            }
         }
     }
 
@@ -763,6 +778,8 @@ public partial class MainViewModel : ObservableObject
         if (!Directory.Exists(_sourceFolderPath) || !Directory.Exists(_targetFolderPath))
             return;
 
+        _comparisonGeneration++;
+        IsLoading = false;
         IsStatusWarning = false;
         StatusText = "";
         var fileResult = FileDiscovery.DiscoverFiles(_sourceFolderPath, _targetFolderPath);
@@ -948,7 +965,17 @@ public partial class MainViewModel : ObservableObject
         headerLines.Add("");
 
         var content = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
-        await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
+        try
+        {
+            await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
+            IsStatusWarning = false;
+            StatusText = $"Saved {Path.GetFileName(file.Path.LocalPath)}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Save failed: {ex.Message}";
+            IsStatusWarning = true;
+        }
     }
 
     public void InitializeFromArguments(
@@ -1015,6 +1042,9 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private static void OpenUrl(string url) =>
-        Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+    private void OpenUrl(string url) =>
+        TryStartProcess(
+            new ProcessStartInfo { FileName = url, UseShellExecute = true },
+            "Could not open browser"
+        );
 }
