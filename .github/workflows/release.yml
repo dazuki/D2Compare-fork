@@ -58,8 +58,30 @@ jobs:
             D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}.zip
             D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}.tar.gz
 
+  appimage:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build AppImage
+        env:
+          TAG: ${{ github.ref_name }}
+        run: packaging/appimage/build-appimage.sh "$TAG" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: D2Compare-${{ github.ref_name }}-x86_64-AppImage
+          path: D2Compare-${{ github.ref_name }}-x86_64.AppImage
+
   release:
-    needs: build
+    needs: [build, appimage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -77,3 +99,4 @@ jobs:
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
+            artifacts/**/*.AppImage

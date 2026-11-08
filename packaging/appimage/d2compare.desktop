@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=D2Compare
+Comment=Compare Diablo II TXT data files between game versions
+Exec=D2Compare
+Icon=d2compare
+Categories=Development;Utility;
+Terminal=false

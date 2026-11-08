@@ -22,6 +22,14 @@ Download: https://dotnet.microsoft.com/en-us/download/dotnet/10.0
 
 ### Linux
 
+**AppImage (no .NET install needed):** download `D2Compare-<version>-x86_64.AppImage` from the [releases](https://github.com/dazuki/D2Compare-fork/releases), then:
+```bash
+chmod +x D2Compare-*-x86_64.AppImage
+./D2Compare-*-x86_64.AppImage
+```
+
+**Or the `.tar.gz` build with the .NET 10 runtime:**
+
 **Ubuntu/Debian:**
 ```bash
 sudo apt install dotnet-runtime-10.0

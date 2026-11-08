@@ -29,6 +29,12 @@ public class UpdateService
         s_http.Timeout = TimeSpan.FromSeconds(30);
     }
 
+    // Set by the AppImage runtime to the path of the running .AppImage file
+    private static string? AppImagePath =>
+        Environment.GetEnvironmentVariable("APPIMAGE") is { Length: > 0 } path && File.Exists(path)
+            ? path
+            : null;
+
     public static string GetCurrentVersion()
     {
         return Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
@@ -55,8 +61,9 @@ public class UpdateService
             )
                 return null;
 
-            var suffix = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? "-win-x64.zip"
+            var suffix =
+                AppImagePath is not null ? "-x86_64.AppImage"
+                : RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "-win-x64.zip"
                 : "-linux-x64.tar.gz";
 
             var body = root.TryGetProperty("body", out var bodyProp)
@@ -93,8 +100,12 @@ public class UpdateService
         var workDir = Directory.CreateTempSubdirectory("D2Compare_update_").FullName;
         var stagingDir = Directory.CreateDirectory(Path.Combine(workDir, "staging")).FullName;
 
+        var isAppImage = AppImagePath is not null;
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        var archivePath = Path.Combine(workDir, isWindows ? "update.zip" : "update.tar.gz");
+        var archivePath =
+            isAppImage ? Path.Combine(stagingDir, "D2Compare.AppImage")
+            : isWindows ? Path.Combine(workDir, "update.zip")
+            : Path.Combine(workDir, "update.tar.gz");
 
         try
         {
@@ -120,6 +131,10 @@ public class UpdateService
                         progress.Report((double)downloaded / total);
                 }
             }
+
+            // An AppImage is the whole app in one file; nothing to extract
+            if (isAppImage)
+                return new StagedUpdate(workDir, stagingDir);
 
             if (isWindows)
                 ZipFile.ExtractToDirectory(archivePath, stagingDir, overwriteFiles: true);
@@ -147,7 +162,16 @@ public class UpdateService
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         ProcessStartInfo psi;
-        if (isWindows)
+        if (AppImagePath is { } appImage)
+            psi = UnixScriptProcess(
+                update.WorkDir,
+                AppImageScript,
+                pid,
+                appImage,
+                Path.Combine(update.StagingDir, "D2Compare.AppImage"),
+                update.WorkDir
+            );
+        else if (isWindows)
         {
             var scriptPath = Path.Combine(update.WorkDir, "update.ps1");
             File.WriteAllText(scriptPath, WindowsScript);
@@ -177,30 +201,15 @@ public class UpdateService
                 psi.ArgumentList.Add(arg);
         }
         else
-        {
-            var scriptPath = Path.Combine(update.WorkDir, "update.sh");
-            File.WriteAllText(scriptPath, UnixScript);
-            // setsid fully detaches the script from this process's terminal session
-            psi = new ProcessStartInfo
-            {
-                FileName = "setsid",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            foreach (
-                var arg in new[]
-                {
-                    "bash",
-                    scriptPath,
-                    pid,
-                    installDir,
-                    update.StagingDir,
-                    update.WorkDir,
-                    Path.Combine(installDir, "D2Compare"),
-                }
-            )
-                psi.ArgumentList.Add(arg);
-        }
+            psi = UnixScriptProcess(
+                update.WorkDir,
+                UnixScript,
+                pid,
+                installDir,
+                update.StagingDir,
+                update.WorkDir,
+                Path.Combine(installDir, "D2Compare")
+            );
 
         Process.Start(psi);
 
@@ -211,6 +220,29 @@ public class UpdateService
             desktop.Shutdown();
         else
             Environment.Exit(0);
+    }
+
+    // setsid fully detaches the script from this process's terminal session
+    private static ProcessStartInfo UnixScriptProcess(
+        string workDir,
+        string script,
+        params string[] args
+    )
+    {
+        var scriptPath = Path.Combine(workDir, "update.sh");
+        File.WriteAllText(scriptPath, script);
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "setsid",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        psi.ArgumentList.Add("bash");
+        psi.ArgumentList.Add(scriptPath);
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
+        return psi;
     }
 
     // Settings live next to the exe on Windows; never let an archive overwrite them
@@ -238,6 +270,22 @@ public class UpdateService
         cp -a -- "$staging_dir/." "$install_dir/"
         chmod +x -- "$exe"
         "$exe" >/dev/null 2>&1 &
+        rm -rf -- "$work_dir"
+        """;
+
+    // Copies next to the target first so the swap is an atomic rename on the same filesystem.
+    // If the copy fails (e.g. read-only folder) the old AppImage is left untouched.
+    private const string AppImageScript = """
+        #!/bin/bash
+        pid="$1"; target="$2"; new_file="$3"; work_dir="$4"
+        while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
+        tmp="$target.update"
+        if cp -- "$new_file" "$tmp" && chmod +x -- "$tmp"; then
+            mv -f -- "$tmp" "$target"
+        else
+            rm -f -- "$tmp"
+        fi
+        "$target" >/dev/null 2>&1 &
         rm -rf -- "$work_dir"
         """;
 
