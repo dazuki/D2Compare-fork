@@ -221,8 +221,8 @@ public partial class MainViewModel : ObservableObject
         else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
         {
             _settings.CustomSourcePath = "";
-            if (_settings.SelectedSourceIndex == customIndex)
-                _settings.SelectedSourceIndex = -1;
+            if (_settings.SelectedSource == AppSettings.CustomSelection)
+                _settings.SelectedSource = null;
             _settings.Save();
             StatusText = $"Custom source folder no longer exists";
             IsStatusWarning = true;
@@ -239,39 +239,74 @@ public partial class MainViewModel : ObservableObject
         else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
         {
             _settings.CustomTargetPath = "";
-            if (_settings.SelectedTargetIndex == customIndex)
-                _settings.SelectedTargetIndex = -1;
+            if (_settings.SelectedTarget == AppSettings.CustomSelection)
+                _settings.SelectedTarget = null;
             _settings.Save();
             StatusText = $"Custom target folder no longer exists";
             IsStatusWarning = true;
         }
 
+        var savedSource = ResolveSelection(_settings.SelectedSource);
         if (
-            _settings.SelectedSourceIndex >= 0
-            && _settings.SelectedSourceIndex < SourceVersions.Count
+            savedSource >= 0
+            && (savedSource < customIndex || !string.IsNullOrEmpty(_settings.CustomSourcePath))
         )
-        {
-            if (
-                _settings.SelectedSourceIndex < customIndex
-                || !string.IsNullOrEmpty(_settings.CustomSourcePath)
-            )
-                SelectedSourceIndex = _settings.SelectedSourceIndex;
-        }
+            SelectedSourceIndex = savedSource;
+
+        var savedTarget = ResolveSelection(_settings.SelectedTarget);
         if (
-            _settings.SelectedTargetIndex >= 0
-            && _settings.SelectedTargetIndex < TargetVersions.Count
+            savedTarget >= 0
+            && (savedTarget < customIndex || !string.IsNullOrEmpty(_settings.CustomTargetPath))
         )
-        {
-            if (
-                _settings.SelectedTargetIndex < customIndex
-                || !string.IsNullOrEmpty(_settings.CustomTargetPath)
-            )
-                SelectedTargetIndex = _settings.SelectedTargetIndex;
-        }
+            SelectedTargetIndex = savedTarget;
+
+        ApplyDefaultVersions();
 
         if (!_settings.DisableUpdateCheck)
             _ = CheckForUpdateAsync();
     }
+
+    private const string DefaultSourceFolder = "92777a";
+
+    // Only fills selections that weren't restored from settings
+    private void ApplyDefaultVersions()
+    {
+        if (SelectedSourceIndex < 0)
+        {
+            var index = ResolveSelection(DefaultSourceFolder);
+            if (index >= 0)
+                SelectedSourceIndex = index;
+        }
+
+        if (SelectedTargetIndex < 0)
+        {
+            var index = _availableVersions
+                .ToList()
+                .FindLastIndex(v => v.DisplayName.EndsWith("- RoTW", StringComparison.Ordinal));
+            if (index >= 0)
+                SelectedTargetIndex = index;
+        }
+    }
+
+    // Maps a saved selection (folder name or "custom") to a dropdown index, -1 if unknown
+    private int ResolveSelection(string? selection)
+    {
+        if (string.IsNullOrEmpty(selection))
+            return -1;
+        if (selection == AppSettings.CustomSelection)
+            return _availableVersions.Count;
+
+        return _availableVersions
+            .ToList()
+            .FindIndex(v =>
+                string.Equals(v.FolderName, selection, StringComparison.OrdinalIgnoreCase)
+            );
+    }
+
+    private string ToSelection(int index) =>
+        index < _availableVersions.Count
+            ? _availableVersions[index].FolderName
+            : AppSettings.CustomSelection;
 
     partial void OnSelectedSourceIndexChanged(int value)
     {
@@ -283,7 +318,7 @@ public partial class MainViewModel : ObservableObject
         else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
             _sourceFolderPath = _settings.CustomSourcePath;
 
-        _settings.SelectedSourceIndex = value;
+        _settings.SelectedSource = ToSelection(value);
         _settings.Save();
         OnTargetChanged();
     }
@@ -298,7 +333,7 @@ public partial class MainViewModel : ObservableObject
         else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
             _targetFolderPath = _settings.CustomTargetPath;
 
-        _settings.SelectedTargetIndex = value;
+        _settings.SelectedTarget = ToSelection(value);
         _settings.Save();
         OnTargetChanged();
     }
@@ -763,7 +798,7 @@ public partial class MainViewModel : ObservableObject
             {
                 _sourceFolderPath = path;
                 SourceVersions[customIndex] = path;
-                _settings.SelectedSourceIndex = customIndex;
+                _settings.SelectedSource = AppSettings.CustomSelection;
                 _settings.CustomSourcePath = path;
                 _settings.Save();
                 SelectedSourceIndex = customIndex;
@@ -773,7 +808,7 @@ public partial class MainViewModel : ObservableObject
             {
                 _targetFolderPath = path;
                 TargetVersions[customIndex] = path;
-                _settings.SelectedTargetIndex = customIndex;
+                _settings.SelectedTarget = AppSettings.CustomSelection;
                 _settings.CustomTargetPath = path;
                 _settings.Save();
                 SelectedTargetIndex = customIndex;
@@ -928,7 +963,7 @@ public partial class MainViewModel : ObservableObject
         {
             // Treat as custom source folder
             _settings.CustomSourcePath = sourceFolder;
-            _settings.SelectedSourceIndex = customIndex;
+            _settings.SelectedSource = AppSettings.CustomSelection;
             _settings.Save();
 
             if (SourceVersions.Count > customIndex)
@@ -942,7 +977,7 @@ public partial class MainViewModel : ObservableObject
         {
             // Treat as custom target folder
             _settings.CustomTargetPath = targetFolder;
-            _settings.SelectedTargetIndex = customIndex;
+            _settings.SelectedTarget = AppSettings.CustomSelection;
             _settings.Save();
 
             if (TargetVersions.Count > customIndex)

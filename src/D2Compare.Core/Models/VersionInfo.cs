@@ -31,6 +31,8 @@ public record VersionInfo(string DisplayName, string FolderName)
         new("3.3.0.0 (94995) - Expansion", "94995b"),
     ];
 
+    public static IReadOnlyList<VersionInfo> BuiltInVersions => KnownVersions;
+
     public static IReadOnlyList<VersionInfo> GetAvailableVersions()
     {
         var txtRoot = GetTxtRootPath();
