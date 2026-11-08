@@ -19,9 +19,19 @@
       FontWeight="SemiBold"
       Text="{Binding $parent[Window].Title}"
     />
+    <!-- Docked before the changelog so long release notes scroll instead of pushing the buttons out -->
+    <StackPanel
+      Margin="0,12,0,0"
+      DockPanel.Dock="Bottom"
+      HorizontalAlignment="Right"
+      Orientation="Horizontal"
+      Spacing="8"
+    >
+      <Button x:Name="CancelButton" Padding="16,6" Content="Cancel" />
+      <Button x:Name="UpdateButton" Padding="16,6" Classes="accent" Content="Update" />
+    </StackPanel>
     <Border
       Margin="0,8,0,0"
-      DockPanel.Dock="Top"
       Padding="8"
       Background="{DynamicResource PanelBackgroundBrush}"
       BorderBrush="Gray"
@@ -38,9 +48,5 @@
         </md:MarkdownScrollViewer.Styles>
       </md:MarkdownScrollViewer>
     </Border>
-    <StackPanel Margin="0,12,0,0" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
-      <Button x:Name="CancelButton" Padding="16,6" Content="Cancel" />
-      <Button x:Name="UpdateButton" Padding="16,6" Classes="accent" Content="Update" />
-    </StackPanel>
   </DockPanel>
 </Window>
