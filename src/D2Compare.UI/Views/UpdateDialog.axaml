@@ -11,7 +11,7 @@
         <TextBlock
             DockPanel.Dock="Top"
             FontSize="16" FontWeight="SemiBold"
-            Text="{Binding Title}" />
+            Text="{Binding $parent[Window].Title}" />
         <Border
             Margin="0,8,0,0"
             DockPanel.Dock="Top"

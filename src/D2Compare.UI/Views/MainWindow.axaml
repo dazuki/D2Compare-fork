@@ -276,7 +276,7 @@
                     <TextBox
                         Grid.Column="0"
                         Text="{Binding SearchText}"
-                        Watermark="Search Term(s)">
+                        PlaceholderText="Search Term(s)">
                         <TextBox.KeyBindings>
                             <KeyBinding Command="{Binding ExecuteSearchCommand}" Gesture="Enter" />
                         </TextBox.KeyBindings>

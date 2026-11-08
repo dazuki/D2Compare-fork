@@ -19,7 +19,7 @@ public partial class UpdateDialog : Window
         Title = $"Update to {version}";
 
         var viewer = this.FindControl<MarkdownScrollViewer>("ChangelogViewer")!;
-        viewer.Engine.HyperlinkCommand = new OpenLinkCommand();
+        viewer.Plugins = new MdAvPlugins { HyperlinkCommand = new OpenLinkCommand() };
         viewer.Markdown = string.IsNullOrWhiteSpace(releaseNotes)
             ? "No changelog available."
             : LinkifyUrls(releaseNotes);

@@ -13,11 +13,11 @@ jobs:
         runtime: [win-x64, linux-x64]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Publish
         run: dotnet publish src/D2Compare.UI/D2Compare.csproj -r ${{ matrix.runtime }} --self-contained false -o publish/${{ matrix.runtime }}
@@ -37,7 +37,7 @@ jobs:
         run: cd publish/$RUNTIME && tar -czf "../../D2Compare-${TAG}-${RUNTIME}.tar.gz" .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: D2Compare-${{ github.ref_name }}-${{ matrix.runtime }}
           path: |
@@ -52,12 +52,12 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           files: |
