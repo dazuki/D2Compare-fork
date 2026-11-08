@@ -321,7 +321,6 @@
             <controls:FormattedTextPresenter
               Document="{Binding FilesDocument}"
               FontFamily="{StaticResource MonoFont}"
-              FontSize="13"
             />
             <TextBlock
               HorizontalAlignment="Center"
@@ -541,7 +540,6 @@
           Padding="6"
           Document="{Binding ColumnsDocument}"
           FontFamily="{StaticResource MonoFont}"
-          FontSize="12"
           SearchTerm="{Binding ActiveSearchTerm}"
         />
       </Border>
@@ -580,7 +578,6 @@
           Padding="6"
           Document="{Binding RowsDocument}"
           FontFamily="{StaticResource MonoFont}"
-          FontSize="12"
           SearchTerm="{Binding ActiveSearchTerm}"
         />
       </Border>
@@ -619,7 +616,6 @@
           Padding="6"
           Document="{Binding ValuesDocument}"
           FontFamily="{StaticResource MonoFont}"
-          FontSize="12"
           SearchTerm="{Binding ActiveSearchTerm}"
         />
       </Border>
