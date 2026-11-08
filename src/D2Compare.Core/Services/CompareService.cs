@@ -8,148 +8,79 @@ public static class CompareService
         string sourcePath,
         string targetPath,
         bool includeNewRows
-    )
-    {
-        var sourceData = CsvParser.Parse(sourcePath);
-        var targetData = CsvParser.Parse(targetPath);
-
-        var allHeaders = new HashSet<string>(sourceData.Keys);
-        allHeaders.UnionWith(targetData.Keys);
-
-        var rowHeaderColumn = allHeaders.FirstOrDefault(h =>
-            sourceData.ContainsKey(h) && targetData.ContainsKey(h)
-        );
-        if (rowHeaderColumn is null)
-        {
-            return new CompareResult(Path.GetFileName(sourcePath), [], [], [], [], [], [], []);
-        }
-
-        // Column diffs
-        var sourceKeyList = sourceData.Keys.ToList();
-        var targetKeyList = targetData.Keys.ToList();
-        var addedColumns = targetData.Keys.Except(sourceData.Keys).ToList();
-        var removedColumns = sourceData.Keys.Except(targetData.Keys).ToList();
-
-        // Identify renames via manual fixes
-        var changedColumns = new List<string>();
-        var remainingAdded = new List<string>(addedColumns);
-        var remainingRemoved = new List<string>(removedColumns);
-
-        foreach (var added in addedColumns.ToList())
-        {
-            foreach (var removed in removedColumns.ToList())
-            {
-                if (SchemaFixProvider.IsKnownRename(added, removed, sourcePath))
-                {
-                    var colIdx = sourceKeyList.IndexOf(removed) + 1;
-                    changedColumns.Add($"(Col {colIdx}) {removed} -> {added}");
-                    remainingAdded.Remove(added);
-                    remainingRemoved.Remove(removed);
-                    break;
-                }
-            }
-        }
-
-        // If equal remaining counts, treat as renames
-        if (remainingAdded.Count == remainingRemoved.Count && remainingAdded.Count > 0)
-        {
-            foreach (var (a, r) in remainingAdded.Zip(remainingRemoved))
-            {
-                var colIdx = sourceKeyList.IndexOf(r) + 1;
-                changedColumns.Add($"(Col {colIdx}) {r} -> {a}");
-            }
-            remainingAdded.Clear();
-            remainingRemoved.Clear();
-        }
-
-        var finalAddedColumns = remainingAdded
-            .Select(c => $"(Col {targetKeyList.IndexOf(c) + 1}) {c}")
-            .ToList();
-        var finalRemovedColumns = remainingRemoved
-            .Select(c => $"(Col {sourceKeyList.IndexOf(c) + 1}) {c}")
-            .ToList();
-
-        // Row diffs
-        var sourceRowKeys = RowInstanceKeyHelper.BuildKeys(sourceData[rowHeaderColumn]);
-        var targetRowKeys = RowInstanceKeyHelper.BuildKeys(targetData[rowHeaderColumn]);
-
-        var removedRowsDict = DiffEngine.GetRemovedRows(sourceRowKeys, targetRowKeys);
-        var allRemovedRows = DiffEngine.ExpandCounts(removedRowsDict);
-        var addedRows = targetRowKeys.Except(sourceRowKeys).ToList();
-
-        var sourceRowIndexMap = sourceRowKeys
-            .Select((key, index) => new { key, index })
-            .ToDictionary(x => x.key, x => x.index);
-        var targetRowIndexMap = targetRowKeys
-            .Select((key, index) => new { key, index })
-            .ToDictionary(x => x.key, x => x.index);
-
-        // Identify row renames
-        var changedRows = new List<string>();
-        var processedAdded = new HashSet<RowInstanceKey>();
-        var processedRemoved = new HashSet<RowInstanceKey>();
-
-        foreach (var added in addedRows)
-        {
-            foreach (var removed in allRemovedRows)
-            {
-                if (
-                    !processedAdded.Contains(added)
-                    && !processedRemoved.Contains(removed)
-                    && SchemaFixProvider.IsKnownRename(added.Name, removed.Name, sourcePath)
-                )
-                {
-                    var srcRow = sourceRowIndexMap[removed] + 1;
-                    changedRows.Add($"(Row {srcRow}) {removed.Name} -> {added.Name}");
-                    processedAdded.Add(added);
-                    processedRemoved.Add(removed);
-                }
-            }
-        }
-
-        if (addedRows.Count == allRemovedRows.Count)
-        {
-            foreach (var (added, removed) in addedRows.Zip(allRemovedRows))
-            {
-                if (!processedAdded.Contains(added) && !processedRemoved.Contains(removed))
-                {
-                    var srcRow = sourceRowIndexMap[removed] + 1;
-                    changedRows.Add($"(Row {srcRow}) {removed.Name} -> {added.Name}");
-                    processedAdded.Add(added);
-                    processedRemoved.Add(removed);
-                }
-            }
-        }
-
-        var finalAddedRows = addedRows
-            .Where(r => !processedAdded.Contains(r))
-            .Select(r => $"(Row {targetRowIndexMap[r] + 1}) {r.Name}")
-            .ToList();
-        var finalRemovedRows = allRemovedRows
-            .Where(r => !processedRemoved.Contains(r))
-            .Select(r => $"(Row {sourceRowIndexMap[r] + 1}) {r.Name}")
-            .ToList();
-
-        // Value-level diffs
-        var groupedDifferences = DiffEngine.GetGroupedDifferences(
-            sourceData,
-            targetData,
-            allHeaders,
-            rowHeaderColumn,
+    ) =>
+        Compare(
+            Path.GetFileName(sourcePath),
+            CsvParser.Parse(sourcePath),
+            CsvParser.Parse(targetPath),
             includeNewRows
         );
 
+    public static CompareResult Compare(
+        string fileName,
+        Dictionary<string, List<string>> sourceData,
+        Dictionary<string, List<string>> targetData,
+        bool includeNewRows
+    )
+    {
+        var rowHeaderColumn = FindRowHeaderColumn(sourceData, targetData);
+        if (rowHeaderColumn is null)
+            return CompareResult.Empty(fileName);
+
+        var schema = AnalyzeSchema(fileName, sourceData, targetData);
+        var groups = DiffEngine.GetGroupedDifferences(
+            sourceData,
+            targetData,
+            rowHeaderColumn,
+            includeNewRows
+        );
+        return schema with { GroupedDifferences = groups };
+    }
+
+    // Column and row diffs only, skipping the expensive value diffs
+    public static CompareResult AnalyzeSchema(
+        string fileName,
+        Dictionary<string, List<string>> sourceData,
+        Dictionary<string, List<string>> targetData
+    )
+    {
+        var rowHeaderColumn = FindRowHeaderColumn(sourceData, targetData);
+        if (rowHeaderColumn is null)
+            return CompareResult.Empty(fileName);
+
+        var removedColumns = Indexed(sourceData.Keys)
+            .Where(c => !targetData.ContainsKey(c.Name))
+            .ToList();
+        var addedColumns = Indexed(targetData.Keys)
+            .Where(c => !sourceData.ContainsKey(c.Name))
+            .ToList();
+        var columns = MatchRenames(fileName, removedColumns, addedColumns);
+
+        var sourceRowKeys = RowInstanceKeyHelper.BuildKeys(sourceData[rowHeaderColumn]);
+        var targetRowKeys = RowInstanceKeyHelper.BuildKeys(targetData[rowHeaderColumn]);
+        var rows = MatchRenames(
+            fileName,
+            Missing(sourceRowKeys, targetRowKeys.ToHashSet()),
+            Missing(targetRowKeys, sourceRowKeys.ToHashSet())
+        );
+
         return new CompareResult(
-            Path.GetFileName(sourcePath),
-            finalAddedColumns,
-            finalRemovedColumns,
-            changedColumns,
-            finalAddedRows,
-            finalRemovedRows,
-            changedRows,
-            groupedDifferences
+            fileName,
+            columns.Added,
+            columns.Removed,
+            columns.Renames,
+            rows.Added,
+            rows.Removed,
+            rows.Renames,
+            []
         );
     }
+
+    // First source column that also exists in the target; D2 files key rows by their first column
+    public static string? FindRowHeaderColumn(
+        Dictionary<string, List<string>> sourceData,
+        Dictionary<string, List<string>> targetData
+    ) => sourceData.Keys.FirstOrDefault(targetData.ContainsKey);
 
     public static List<CompareResult> CompareFolder(
         string sourcePath,
@@ -159,29 +90,113 @@ public static class CompareService
     )
     {
         var results = new List<CompareResult>();
-        var sourceFiles = GetTxtFiles(sourcePath);
-        var targetFiles = GetTxtFiles(targetPath);
 
-        foreach (var sourceFile in sourceFiles)
+        foreach (var (sourceFile, targetFile) in MatchTxtFiles(sourcePath, targetPath))
         {
-            var fileName = Path.GetFileName(sourceFile);
-            var targetFile = Array.Find(
-                targetFiles,
-                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase)
-            );
-
-            if (targetFile is not null)
-            {
-                onProgress?.Invoke(fileName);
-                results.Add(CompareFile(sourceFile, targetFile, includeNewRows));
-            }
+            onProgress?.Invoke(Path.GetFileName(sourceFile));
+            results.Add(CompareFile(sourceFile, targetFile, includeNewRows));
         }
 
         return results;
     }
 
-    // Directory.GetFiles glob is case-sensitive on Linux; D2R files may be
-    // extracted as uppercase .TXT, so filter the extension case-insensitively.
+    // Pairs .txt files present in both folders. Directory.GetFiles glob is case-sensitive
+    // on Linux and D2R files may be extracted as uppercase .TXT, so match case-insensitively.
+    public static IEnumerable<(string Source, string Target)> MatchTxtFiles(
+        string sourcePath,
+        string targetPath
+    )
+    {
+        var targetByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var targetFile in GetTxtFiles(targetPath))
+            targetByName.TryAdd(Path.GetFileName(targetFile), targetFile);
+
+        foreach (var sourceFile in GetTxtFiles(sourcePath))
+        {
+            if (targetByName.TryGetValue(Path.GetFileName(sourceFile), out var targetFile))
+                yield return (sourceFile, targetFile);
+        }
+    }
+
+    // Pairs each removed entry with at most one added entry using the known rename rules
+    internal static (
+        List<Rename> Renames,
+        List<IndexedName> Removed,
+        List<IndexedName> Added
+    ) MatchRenames(string fileName, List<IndexedName> removed, List<IndexedName> added)
+    {
+        var addedByKey = new Dictionary<string, Queue<int>>();
+        var addedByIndex = new Dictionary<int, int>();
+        for (int i = 0; i < added.Count; i++)
+        {
+            var key = SchemaFixProvider.Canonical(added[i].Name);
+            if (!addedByKey.TryGetValue(key, out var queue))
+                addedByKey[key] = queue = new Queue<int>();
+            queue.Enqueue(i);
+            addedByIndex[added[i].Index] = i;
+        }
+
+        var used = new bool[added.Count];
+        var renames = new List<Rename>();
+        var remainingRemoved = new List<IndexedName>();
+
+        foreach (var oldEntry in removed)
+        {
+            var match = FindByName(fileName, oldEntry, addedByKey, used);
+            if (
+                match < 0
+                && addedByIndex.TryGetValue(oldEntry.Index, out var slot)
+                && !used[slot]
+                && SchemaFixProvider.IsReusedSlot(fileName, oldEntry, added[slot])
+            )
+                match = slot;
+
+            if (match < 0)
+            {
+                remainingRemoved.Add(oldEntry);
+                continue;
+            }
+
+            used[match] = true;
+            renames.Add(new Rename(oldEntry, added[match]));
+        }
+
+        var remainingAdded = added.Where((_, i) => !used[i]).ToList();
+        return (renames, remainingRemoved, remainingAdded);
+    }
+
+    private static int FindByName(
+        string fileName,
+        IndexedName oldEntry,
+        Dictionary<string, Queue<int>> addedByKey,
+        bool[] used
+    )
+    {
+        foreach (var key in SchemaFixProvider.RenameKeys(fileName, oldEntry.Name))
+        {
+            if (!addedByKey.TryGetValue(key, out var queue))
+                continue;
+            while (queue.Count > 0 && used[queue.Peek()])
+                queue.Dequeue();
+            if (queue.Count > 0)
+                return queue.Dequeue();
+        }
+        return -1;
+    }
+
+    private static IEnumerable<IndexedName> Indexed(IEnumerable<string> names) =>
+        names.Select((name, i) => new IndexedName(i, name));
+
+    // Row instances in `rows` that are absent from `other`
+    private static List<IndexedName> Missing(
+        List<RowInstanceKey> rows,
+        HashSet<RowInstanceKey> other
+    ) =>
+        rows.Select((key, i) => (key, i))
+            .Where(x => !other.Contains(x.key))
+            .Select(x => new IndexedName(x.i, x.key.Name))
+            .ToList();
+
     private static string[] GetTxtFiles(string path) =>
         Directory
             .GetFiles(path)

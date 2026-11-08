@@ -20,4 +20,12 @@ public static class RowInstanceKeyHelper
 
         return keys;
     }
+
+    public static Dictionary<RowInstanceKey, int> IndexByKey(IReadOnlyList<RowInstanceKey> keys)
+    {
+        var indices = new Dictionary<RowInstanceKey, int>(keys.Count);
+        for (int i = 0; i < keys.Count; i++)
+            indices[keys[i]] = i;
+        return indices;
+    }
 }

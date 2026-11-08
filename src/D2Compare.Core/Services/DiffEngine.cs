@@ -1,165 +1,104 @@
-using System.Text.RegularExpressions;
+using System.Collections.Concurrent;
 using D2Compare.Core.Models;
 
 namespace D2Compare.Core.Services;
 
 public static class DiffEngine
 {
-    public static Dictionary<T, int> GetRemovedRows<T>(
-        IReadOnlyList<T> file1Rows,
-        IReadOnlyList<T> file2Rows
-    )
-        where T : notnull
-    {
-        var removedRows = new Dictionary<T, int>();
-
-        foreach (var row in file1Rows)
-        {
-            if (removedRows.ContainsKey(row))
-                removedRows[row]++;
-            else
-                removedRows[row] = 1;
-        }
-
-        foreach (var row in file2Rows)
-        {
-            if (removedRows.ContainsKey(row))
-            {
-                removedRows[row]--;
-                if (removedRows[row] == 0)
-                    removedRows.Remove(row);
-            }
-        }
-
-        return removedRows;
-    }
-
-    public static List<T> ExpandCounts<T>(Dictionary<T, int> dictionary)
-        where T : notnull
-    {
-        var list = new List<T>();
-        foreach (var kvp in dictionary)
-        {
-            for (int i = 0; i < kvp.Value; i++)
-                list.Add(kvp.Key);
-        }
-        return list;
-    }
-
     public static List<DiffGroup> GetGroupedDifferences(
-        Dictionary<string, List<string>> file1Data,
-        Dictionary<string, List<string>> file2Data,
-        HashSet<string> allHeaders,
+        Dictionary<string, List<string>> sourceData,
+        Dictionary<string, List<string>> targetData,
         string rowHeaderColumn,
         bool includeNewRows
     )
     {
-        var groupedDifferences = new Dictionary<string, List<(string Diff, string ColIndex)>>();
-        var newRowKeys = new HashSet<string>();
+        // Source column order first, then target-only columns; resolved once instead of per cell
+        var columns = sourceData
+            .Keys.Concat(targetData.Keys.Where(k => !sourceData.ContainsKey(k)))
+            .Select(name =>
+                (
+                    Name: name,
+                    Source: sourceData.GetValueOrDefault(name),
+                    Target: targetData.GetValueOrDefault(name)
+                )
+            )
+            .ToList();
 
-        // Build stable header ordering and index lookup once
-        var headerList = allHeaders.ToList();
-        var headerIndexMap = new Dictionary<string, int>(headerList.Count);
-        for (int i = 0; i < headerList.Count; i++)
-            headerIndexMap[headerList[i]] = i;
+        var sourceRowIndices = RowInstanceKeyHelper.IndexByKey(
+            RowInstanceKeyHelper.BuildKeys(sourceData[rowHeaderColumn])
+        );
+        var targetRowKeys = RowInstanceKeyHelper.BuildKeys(targetData[rowHeaderColumn]);
 
-        // Build row index lookups to avoid O(n) IndexOf per column
-        var file1Rows = file1Data[rowHeaderColumn];
-        var file1RowKeys = RowInstanceKeyHelper.BuildKeys(file1Rows);
-        var file1RowIndices = new Dictionary<RowInstanceKey, int>();
-        for (int i = 0; i < file1RowKeys.Count; i++)
-            file1RowIndices[file1RowKeys[i]] = i;
+        var groups = new ConcurrentBag<(DiffGroup Group, int SourceOrder)>();
 
-        var file2Rows = file2Data[rowHeaderColumn];
-        var file2RowKeys = RowInstanceKeyHelper.BuildKeys(file2Rows);
-        var file2RowIndices = new Dictionary<RowInstanceKey, int>();
-        for (int i = 0; i < file2RowKeys.Count; i++)
-            file2RowIndices[file2RowKeys[i]] = i;
-
-        var allRowHeaders = new HashSet<RowInstanceKey>(file1RowKeys);
-        allRowHeaders.UnionWith(file2RowKeys);
-
-        Parallel.ForEach(
-            allRowHeaders,
-            rowKey =>
+        // Each row instance yields at most one group, so rows are processed independently
+        Parallel.For(
+            0,
+            targetRowKeys.Count,
+            targetIndex =>
             {
-                bool inFile1 = file1RowIndices.ContainsKey(rowKey);
-                bool inFile2 = file2RowIndices.ContainsKey(rowKey);
-
-                if (inFile1 && inFile2)
+                var rowKey = targetRowKeys[targetIndex];
+                if (sourceRowIndices.TryGetValue(rowKey, out var sourceIndex))
                 {
-                    int index1 = file1RowIndices[rowKey];
-                    int index2 = file2RowIndices[rowKey];
-
-                    foreach (var header in headerList)
+                    var changes = ChangedValues(columns, sourceIndex, targetIndex);
+                    if (changes.Count > 0)
                     {
-                        if (!file1Data.ContainsKey(header) || !file2Data.ContainsKey(header))
-                            continue;
-
-                        var value1 = file1Data[header][index1];
-                        var value2 = file2Data[header][index2];
-
-                        if (value1 != value2)
-                        {
-                            string valueDifference = $"{header}: '{value1}' -> '{value2}'";
-                            string column0Value =
-                                $"(Row {Math.Min(index1, index2) + 1}) {rowKey.Name}";
-                            int columnIndex = headerIndexMap.TryGetValue(header, out var idx)
-                                ? idx
-                                : 0;
-
-                            lock (groupedDifferences)
-                            {
-                                if (!groupedDifferences.ContainsKey(column0Value))
-                                    groupedDifferences[column0Value] = new List<(string, string)>();
-
-                                groupedDifferences[column0Value]
-                                    .Add((valueDifference, columnIndex.ToString()));
-                            }
-                        }
+                        var row = Math.Min(sourceIndex, targetIndex) + 1;
+                        groups.Add((new DiffGroup(row, rowKey.Name, changes), sourceIndex));
                     }
                 }
-                else if (includeNewRows && !inFile1)
+                else if (includeNewRows)
                 {
-                    if (!file2RowIndices.TryGetValue(rowKey, out int index2))
-                        return;
-
-                    foreach (var header in headerList)
-                    {
-                        if (!file2Data.ContainsKey(header))
-                            continue;
-
-                        var value2 = file2Data[header][index2];
-
-                        string valueDifference = $"{header}: '{value2}'";
-                        string column0Value = $"(Row {index2 + 1}) {rowKey.Name}";
-                        int columnIndex = headerIndexMap.TryGetValue(header, out var idx) ? idx : 0;
-
-                        lock (groupedDifferences)
-                        {
-                            if (!groupedDifferences.ContainsKey(column0Value))
-                                groupedDifferences[column0Value] = new List<(string, string)>();
-
-                            groupedDifferences[column0Value]
-                                .Add((valueDifference, columnIndex.ToString()));
-                            newRowKeys.Add(column0Value);
-                        }
-                    }
+                    var changes = NewRowValues(columns, targetIndex);
+                    groups.Add(
+                        (
+                            new DiffGroup(targetIndex + 1, rowKey.Name, changes, IsNew: true),
+                            int.MaxValue
+                        )
+                    );
                 }
             }
         );
 
-        return groupedDifferences
-            .OrderBy(pair => int.Parse(Regex.Match(pair.Key, @"\(Row (\d+)\)").Groups[1].Value))
-            .Select(pair =>
-            {
-                var sorted = pair.Value.OrderBy(t => int.Parse(t.ColIndex)).ToList();
-                return new DiffGroup(
-                    pair.Key,
-                    sorted.Select(t => t.Diff).ToList(),
-                    newRowKeys.Contains(pair.Key)
-                );
-            })
+        return groups
+            .OrderBy(g => g.Group.Row)
+            .ThenBy(g => g.SourceOrder)
+            .ThenBy(g => g.Group.RowName, StringComparer.Ordinal)
+            .Select(g => g.Group)
             .ToList();
+    }
+
+    private static List<ValueChange> ChangedValues(
+        List<(string Name, List<string>? Source, List<string>? Target)> columns,
+        int sourceIndex,
+        int targetIndex
+    )
+    {
+        var changes = new List<ValueChange>();
+        foreach (var (name, source, target) in columns)
+        {
+            if (source is null || target is null)
+                continue;
+
+            var oldValue = source[sourceIndex];
+            var newValue = target[targetIndex];
+            if (oldValue != newValue)
+                changes.Add(new ValueChange(name, oldValue, newValue));
+        }
+        return changes;
+    }
+
+    private static List<ValueChange> NewRowValues(
+        List<(string Name, List<string>? Source, List<string>? Target)> columns,
+        int targetIndex
+    )
+    {
+        var changes = new List<ValueChange>();
+        foreach (var (name, _, target) in columns)
+        {
+            if (target is not null)
+                changes.Add(new ValueChange(name, null, target[targetIndex]));
+        }
+        return changes;
     }
 }

@@ -12,310 +12,202 @@ public static class ConvertService
         string outputPath,
         bool convertColumns,
         RowConversionMode rowMode,
-        Action<string>? onProgress = null
+        Action<string>? onProgress = null,
+        CancellationToken cancellationToken = default
     )
     {
         Directory.CreateDirectory(outputPath);
 
-        // Directory.GetFiles glob is case-sensitive on Linux; D2R files may be
-        // extracted as uppercase .TXT, so filter the extension case-insensitively.
-        var sourceFiles = Directory
-            .GetFiles(sourcePath)
-            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        var targetFiles = Directory
-            .GetFiles(targetPath)
-            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        foreach (var sourceFile in sourceFiles)
+        foreach (
+            var (sourceFile, targetFile) in CompareService.MatchTxtFiles(sourcePath, targetPath)
+        )
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var fileName = Path.GetFileName(sourceFile);
-            var targetFile = Array.Find(
-                targetFiles,
-                f => Path.GetFileName(f)!.Equals(fileName, StringComparison.OrdinalIgnoreCase)
-            );
-
-            if (targetFile is null)
-                continue;
-
             onProgress?.Invoke(fileName);
 
-            var sourceData = CsvParser.Parse(sourceFile);
+            var sourceData = CsvParser.Parse(sourceFile, out var encoding);
             var targetData = CsvParser.Parse(targetFile);
+            var schema = CompareService.AnalyzeSchema(fileName, sourceData, targetData);
 
-            var result = CompareService.CompareFile(sourceFile, targetFile, includeNewRows: true);
-
-            var converted = ConvertFile(sourceData, targetData, result, convertColumns, rowMode);
+            var converted = ConvertFile(sourceData, targetData, schema, convertColumns, rowMode);
             if (converted is null)
                 continue;
 
-            var outFile = Path.Combine(outputPath, fileName);
-            WriteTsv(outFile, converted, CsvParser.DetectEncoding(sourceFile));
+            WriteTsv(Path.Combine(outputPath, fileName), converted, encoding);
         }
     }
 
-    // Build converted data dictionary (column name -> list of values by row)
-    // Returns null if no common row header column (cannot align rows)
+    // Build converted data (column name -> values by row).
+    // Returns null if there is no common row header column to align rows on.
     internal static Dictionary<string, List<string>>? ConvertFile(
         Dictionary<string, List<string>> sourceData,
         Dictionary<string, List<string>> targetData,
-        CompareResult result,
+        CompareResult schema,
         bool convertColumns,
         RowConversionMode rowMode
     )
     {
-        var allHeaders = new HashSet<string>(sourceData.Keys);
-        allHeaders.UnionWith(targetData.Keys);
-        var rowHeaderColumn = allHeaders.FirstOrDefault(h =>
-            sourceData.ContainsKey(h) && targetData.ContainsKey(h)
-        );
+        var rowHeaderColumn = CompareService.FindRowHeaderColumn(sourceData, targetData);
         if (rowHeaderColumn is null)
             return null;
 
-        var sourceKeyList = sourceData.Keys.ToList();
-        var targetKeyList = targetData.Keys.ToList();
+        var sourceRowNames = sourceData[rowHeaderColumn];
+        var targetRowNames = targetData[rowHeaderColumn];
 
-        // Parse renames: "(Col N) old -> new" and "(Row N) old -> new"
-        var columnRenameOldToNew = ParseRenames(result.ChangedColumns);
-        var columnRenameNewToOld = columnRenameOldToNew.ToDictionary(kv => kv.New, kv => kv.Old);
-        var columnRenameOldToNewDict = columnRenameOldToNew.ToDictionary(
-            kv => kv.Old,
-            kv => kv.New
-        );
-        var rowRenameOldToNew = ParseRenames(result.ChangedRows);
-        var rowRenameNewToOld = rowRenameOldToNew.ToDictionary(kv => kv.New, kv => kv.Old);
-        var rowRenameOldToNewDict = rowRenameOldToNew.ToDictionary(kv => kv.Old, kv => kv.New);
-
-        var outputColumns = convertColumns ? targetKeyList : sourceKeyList;
-        var sourceRowKeys = sourceData[rowHeaderColumn];
-        var targetRowKeys = targetData[rowHeaderColumn];
-
-        var outputRowKeys = BuildOutputRowKeys(
-            rowMode,
-            sourceRowKeys,
-            targetRowKeys,
-            rowRenameNewToOld,
-            rowRenameOldToNewDict
-        );
-
+        var rows = BuildOutputRows(rowMode, sourceRowNames, targetRowNames, schema.ChangedRows);
         if (rowMode != RowConversionMode.None)
-            outputRowKeys = ApplyVersionRowOrder(
-                outputRowKeys,
+            rows = ApplyVersionRowOrder(
+                rows,
                 sourceData,
                 targetData,
-                sourceRowKeys,
-                targetRowKeys,
-                rowHeaderColumn
+                sourceRowNames,
+                targetRowNames
             );
 
-        var output = new Dictionary<string, List<string>>();
-        foreach (var col in outputColumns)
-            output[col] = new List<string>();
-
-        bool rowsFromTarget = rowMode == RowConversionMode.AppendOriginalAtEnd; // None and AppendTarget use source row order
-
-        foreach (var outRowKey in outputRowKeys)
+        var outputColumns = convertColumns ? targetData.Keys : sourceData.Keys;
+        var oldToNew = new Dictionary<string, string>();
+        var newToOld = new Dictionary<string, string>();
+        foreach (var rename in schema.ChangedColumns)
         {
-            // When rowsFromTarget (AppendOriginal): resolve to source row; appended source-only rows have no target row
-            // When !rowsFromTarget (AppendTarget): resolve to source row; appended target-only rows have no source row (or renamed source row).
-            string? sourceRowKey = rowsFromTarget
-                ? (
-                    sourceRowKeys.Contains(outRowKey)
-                        ? outRowKey
-                        : (rowRenameNewToOld.TryGetValue(outRowKey, out var so) ? so : null)
-                )
-                : (
-                    sourceRowKeys.Contains(outRowKey)
-                        ? outRowKey
-                        : (rowRenameNewToOld.TryGetValue(outRowKey, out var oldK) ? oldK : null)
-                );
+            oldToNew.TryAdd(rename.Old.Name, rename.New.Name);
+            newToOld.TryAdd(rename.New.Name, rename.Old.Name);
+        }
 
-            // When rowsFromTarget, only set targetRowKey if target actually has this row (appended source-only rows are not in target)
-            string? targetRowKey = rowsFromTarget
-                ? (targetRowKeys.Contains(outRowKey) ? outRowKey : null)
-                : (
-                    targetRowKeys.Contains(outRowKey)
-                        ? outRowKey
-                        : (rowRenameOldToNewDict.TryGetValue(outRowKey, out var tn) ? tn : null)
-                );
+        var output = new Dictionary<string, List<string>>();
+        foreach (var outCol in outputColumns)
+        {
+            var sourceColumn = ResolveColumn(outCol, sourceData, newToOld);
+            var targetColumn = ResolveColumn(outCol, targetData, oldToNew);
 
-            int? sourceRowIndex = sourceRowKey is null ? null : sourceRowKeys.IndexOf(sourceRowKey);
-            int? targetRowIndex = targetRowKey is null ? null : targetRowKeys.IndexOf(targetRowKey);
-
-            foreach (var outCol in outputColumns)
+            var values = new List<string>(rows.Count);
+            foreach (var (sourceRow, targetRow) in rows)
             {
-                string? sourceCol = ResolveColumn(
-                    outCol,
-                    sourceKeyList,
-                    targetKeyList,
-                    columnRenameOldToNewDict,
-                    columnRenameNewToOld,
-                    fromTarget: convertColumns
-                );
-                string? targetCol = ResolveColumn(
-                    outCol,
-                    sourceKeyList,
-                    targetKeyList,
-                    columnRenameOldToNewDict,
-                    columnRenameNewToOld,
-                    fromTarget: !convertColumns
-                );
-
-                string value = "";
-                if (
-                    sourceCol is not null
-                    && sourceRowIndex is not null
-                    && sourceData[sourceCol].Count > sourceRowIndex.Value
-                )
-                    value = sourceData[sourceCol][sourceRowIndex.Value];
-                if (
-                    string.IsNullOrEmpty(value)
-                    && targetCol is not null
-                    && targetRowIndex is not null
-                    && targetData[targetCol].Count > targetRowIndex.Value
-                )
-                    value = targetData[targetCol][targetRowIndex.Value];
-
-                output[outCol].Add(value);
+                var value = sourceColumn is not null && sourceRow is int s ? sourceColumn[s] : "";
+                if (value.Length == 0 && targetColumn is not null && targetRow is int t)
+                    value = targetColumn[t];
+                values.Add(value);
             }
+            output[outCol] = values;
         }
 
         return output;
     }
 
-    private static List<string> BuildOutputRowKeys(
+    // Each output row points at its source and/or target row by position, so rows that
+    // share a name (common in D2 files) never get mixed up.
+    private static List<(int? Source, int? Target)> BuildOutputRows(
         RowConversionMode rowMode,
-        List<string> sourceRowKeys,
-        List<string> targetRowKeys,
-        Dictionary<string, string> rowRenameNewToOld,
-        Dictionary<string, string> rowRenameOldToNewDict
+        List<string> sourceRowNames,
+        List<string> targetRowNames,
+        IReadOnlyList<Rename> rowRenames
     )
     {
-        switch (rowMode)
+        var sourceKeys = RowInstanceKeyHelper.BuildKeys(sourceRowNames);
+        var targetKeys = RowInstanceKeyHelper.BuildKeys(targetRowNames);
+        var sourceByKey = RowInstanceKeyHelper.IndexByKey(sourceKeys);
+        var targetByKey = RowInstanceKeyHelper.IndexByKey(targetKeys);
+
+        var renameToTarget = new Dictionary<int, int>();
+        var renameToSource = new Dictionary<int, int>();
+        foreach (var rename in rowRenames)
         {
-            case RowConversionMode.None:
-                return sourceRowKeys;
-            case RowConversionMode.AppendOriginalAtEnd:
-            {
-                var targetSet = new HashSet<string>(targetRowKeys);
-                var sourceOnly = sourceRowKeys
-                    .Where(s => !targetSet.Contains(s) && !rowRenameOldToNewDict.ContainsKey(s))
-                    .ToList();
-                return targetRowKeys.Concat(sourceOnly).ToList();
-            }
-            case RowConversionMode.AppendTargetAtEnd:
-            {
-                var sourceSet = new HashSet<string>(sourceRowKeys);
-                var targetOnly = targetRowKeys
-                    .Where(t => !sourceSet.Contains(t) && !rowRenameNewToOld.ContainsKey(t))
-                    .ToList();
-                return sourceRowKeys.Concat(targetOnly).ToList();
-            }
-            default:
-                return sourceRowKeys;
+            renameToTarget[rename.Old.Index] = rename.New.Index;
+            renameToSource[rename.New.Index] = rename.Old.Index;
         }
+
+        int? TargetFor(int s) =>
+            targetByKey.TryGetValue(sourceKeys[s], out var t) ? t
+            : renameToTarget.TryGetValue(s, out var renamed) ? renamed
+            : null;
+
+        int? SourceFor(int t) =>
+            sourceByKey.TryGetValue(targetKeys[t], out var s) ? s
+            : renameToSource.TryGetValue(t, out var renamed) ? renamed
+            : null;
+
+        var sourceRows = Enumerable.Range(0, sourceKeys.Count);
+        var targetRows = Enumerable.Range(0, targetKeys.Count);
+
+        return rowMode switch
+        {
+            RowConversionMode.AppendOriginalAtEnd => targetRows
+                .Select(t => (SourceFor(t), (int?)t))
+                .Concat(
+                    sourceRows.Where(s => TargetFor(s) is null).Select(s => ((int?)s, (int?)null))
+                )
+                .ToList(),
+            RowConversionMode.AppendTargetAtEnd => sourceRows
+                .Select(s => ((int?)s, TargetFor(s)))
+                .Concat(
+                    targetRows.Where(t => SourceFor(t) is null).Select(t => ((int?)null, (int?)t))
+                )
+                .ToList(),
+            _ => sourceRows.Select(s => ((int?)s, TargetFor(s))).ToList(),
+        };
     }
 
     // Reorder rows so that: all version "0" first, then row "Expansion", then all version "100", then the rest.
-
-    private static List<string> ApplyVersionRowOrder(
-        List<string> rowKeys,
+    private static List<(int? Source, int? Target)> ApplyVersionRowOrder(
+        List<(int? Source, int? Target)> rows,
         Dictionary<string, List<string>> sourceData,
         Dictionary<string, List<string>> targetData,
-        List<string> sourceRowKeys,
-        List<string> targetRowKeys,
-        string rowHeaderColumn
+        List<string> sourceRowNames,
+        List<string> targetRowNames
     )
     {
-        string? versionCol =
-            sourceData.Keys.FirstOrDefault(k =>
-                string.Equals(k, "version", StringComparison.OrdinalIgnoreCase)
-            )
-            ?? targetData.Keys.FirstOrDefault(k =>
-                string.Equals(k, "version", StringComparison.OrdinalIgnoreCase)
-            );
-        if (versionCol is null)
-            return rowKeys;
+        var sourceVersion = FindVersionColumn(sourceData);
+        var targetVersion = FindVersionColumn(targetData);
+        if (sourceVersion is null && targetVersion is null)
+            return rows;
 
-        string GetVersion(string rowKey)
+        string Version((int? Source, int? Target) row)
         {
-            var srcIdx = sourceRowKeys.IndexOf(rowKey);
-            if (
-                srcIdx >= 0
-                && sourceData.ContainsKey(versionCol)
-                && srcIdx < sourceData[versionCol].Count
-            )
-                return sourceData[versionCol][srcIdx].Trim();
-            var tgtIdx = targetRowKeys.IndexOf(rowKey);
-            if (
-                tgtIdx >= 0
-                && targetData.ContainsKey(versionCol)
-                && tgtIdx < targetData[versionCol].Count
-            )
-                return targetData[versionCol][tgtIdx].Trim();
+            if (row.Source is int s && sourceVersion is not null)
+                return sourceVersion[s].Trim();
+            if (row.Target is int t && targetVersion is not null)
+                return targetVersion[t].Trim();
             return "";
         }
 
-        int GetTier(string rowKey)
+        int Tier((int? Source, int? Target) row)
         {
-            if (string.Equals(rowKey, "Expansion", StringComparison.OrdinalIgnoreCase))
+            var name = row.Source is int s ? sourceRowNames[s] : targetRowNames[row.Target!.Value];
+            if (string.Equals(name, "Expansion", StringComparison.OrdinalIgnoreCase))
                 return 1;
-            var ver = GetVersion(rowKey);
-            if (ver == "0")
-                return 0;
-            if (ver == "100")
-                return 2;
-            return 3;
+            return Version(row) switch
+            {
+                "0" => 0,
+                "100" => 2,
+                _ => 3,
+            };
         }
 
-        return rowKeys
-            .Select((key, index) => (Key: key, Index: index, Tier: GetTier(key)))
-            .OrderBy(x => x.Tier)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Key)
+        return rows.Select((row, index) => (row, index, tier: Tier(row)))
+            .OrderBy(x => x.tier)
+            .ThenBy(x => x.index)
+            .Select(x => x.row)
             .ToList();
     }
 
-    private static List<(string Old, string New)> ParseRenames(IReadOnlyList<string> changed)
-    {
-        var list = new List<(string, string)>();
-        foreach (var s in changed)
-        {
-            var idx = s.IndexOf(") ", StringComparison.Ordinal);
-            if (idx < 0)
-                continue;
-            var rest = s[(idx + 2)..];
-            var arrow = rest.IndexOf(" -> ", StringComparison.Ordinal);
-            if (arrow < 0)
-                continue;
-            var oldName = rest[..arrow].Trim();
-            var newName = rest[(arrow + 4)..].Trim();
-            if (oldName.Length > 0 && newName.Length > 0)
-                list.Add((oldName, newName));
-        }
-        return list;
-    }
+    private static List<string>? FindVersionColumn(Dictionary<string, List<string>> data) =>
+        data.FirstOrDefault(kv =>
+            string.Equals(kv.Key, "version", StringComparison.OrdinalIgnoreCase)
+        ).Value;
 
-    // If true, output column came from target (convertColumns=true); resolve to source col
-    private static string? ResolveColumn(
+    // The column holding `outputCol` in `data`, following a rename if it has another name there
+    private static List<string>? ResolveColumn(
         string outputCol,
-        List<string> sourceKeyList,
-        List<string> targetKeyList,
-        Dictionary<string, string> columnRenameOldToNew,
-        Dictionary<string, string> columnRenameNewToOld,
-        bool fromTarget
+        Dictionary<string, List<string>> data,
+        Dictionary<string, string> renames
     )
     {
-        if (fromTarget)
-        {
-            if (sourceKeyList.Contains(outputCol))
-                return outputCol;
-            return columnRenameNewToOld.TryGetValue(outputCol, out var oldCol) ? oldCol : null;
-        }
-        if (targetKeyList.Contains(outputCol))
-            return outputCol;
-        return columnRenameOldToNew.TryGetValue(outputCol, out var newCol) ? newCol : null;
+        if (data.TryGetValue(outputCol, out var column))
+            return column;
+        return renames.TryGetValue(outputCol, out var renamed)
+            ? data.GetValueOrDefault(renamed)
+            : null;
     }
 
     // D2 TXT files require CRLF line endings; encoding mirrors the source file

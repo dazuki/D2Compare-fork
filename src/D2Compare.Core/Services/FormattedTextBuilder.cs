@@ -5,104 +5,78 @@ namespace D2Compare.Core.Services;
 // Builds FormattedDocument from CompareResult data, replacing RTF generation.
 public static class FormattedTextBuilder
 {
-    public static FormattedDocument BuildColumnDiffs(CompareResult result, bool isBatchMode)
+    public static FormattedDocument BuildColumnDiffs(CompareResult result, bool isBatchMode) =>
+        BuildSchemaDiffs(
+            result.FileName,
+            "Col",
+            result.ChangedColumns,
+            result.AddedColumns,
+            result.RemovedColumns,
+            isBatchMode
+        );
+
+    public static FormattedDocument BuildRowDiffs(CompareResult result, bool isBatchMode) =>
+        BuildSchemaDiffs(
+            result.FileName,
+            "Row",
+            result.ChangedRows,
+            result.AddedRows,
+            result.RemovedRows,
+            isBatchMode
+        );
+
+    private static FormattedDocument BuildSchemaDiffs(
+        string fileName,
+        string unit,
+        IReadOnlyList<Rename> changed,
+        IReadOnlyList<IndexedName> added,
+        IReadOnlyList<IndexedName> removed,
+        bool isBatchMode
+    )
     {
         var lines = new List<FormattedLine>();
-        var hasChanges =
-            result.ChangedColumns.Count > 0
-            || result.AddedColumns.Count > 0
-            || result.RemovedColumns.Count > 0;
+        var hasChanges = changed.Count > 0 || added.Count > 0 || removed.Count > 0;
 
         if (isBatchMode)
-            lines.Add(
-                hasChanges ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName)
-            );
+            lines.Add(hasChanges ? FileNameLine(fileName) : MutedFileNameLine(fileName));
 
         var pad = isBatchMode ? " " : "";
 
-        foreach (var changed in result.ChangedColumns)
-        {
-            var (colTag, name) = ExtractTag(changed);
+        foreach (var rename in changed)
             lines.Add(
                 Line(
-                    Span($"{pad}Changed{colTag}: ", SpanColor.Header, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
+                    Span(
+                        $"{pad}Changed ({unit} {rename.Old.Index + 1}): ",
+                        SpanColor.Header,
+                        SpanStyle.Bold
+                    ),
+                    Span($"{rename.Old.Name} -> {rename.New.Name}", SpanColor.Default)
                 )
             );
-        }
 
-        foreach (var added in result.AddedColumns)
-        {
-            var (colTag, name) = ExtractTag(added);
+        foreach (var entry in added)
             lines.Add(
                 Line(
-                    Span($"{pad}Added{colTag}: ", SpanColor.Added, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
+                    Span(
+                        $"{pad}Added ({unit} {entry.Index + 1}): ",
+                        SpanColor.Added,
+                        SpanStyle.Bold
+                    ),
+                    Span(entry.Name, SpanColor.Default)
                 )
             );
-        }
 
-        foreach (var removed in result.RemovedColumns)
-        {
-            var (colTag, name) = ExtractTag(removed);
+        foreach (var entry in removed)
             lines.Add(
                 Line(
-                    Span($"{pad}Removed{colTag}: ", SpanColor.Removed, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
+                    Span(
+                        $"{pad}Removed ({unit} {entry.Index + 1}): ",
+                        SpanColor.Removed,
+                        SpanStyle.Bold
+                    ),
+                    Span(entry.Name, SpanColor.Default)
                 )
             );
-        }
-
-        return new FormattedDocument(lines);
-    }
-
-    public static FormattedDocument BuildRowDiffs(CompareResult result, bool isBatchMode)
-    {
-        var lines = new List<FormattedLine>();
-        var hasChanges =
-            result.ChangedRows.Count > 0
-            || result.AddedRows.Count > 0
-            || result.RemovedRows.Count > 0;
-
-        if (isBatchMode)
-            lines.Add(
-                hasChanges ? FileNameLine(result.FileName) : MutedFileNameLine(result.FileName)
-            );
-
-        var pad = isBatchMode ? " " : "";
-
-        foreach (var changed in result.ChangedRows)
-        {
-            var (rowTag, name) = ExtractTag(changed);
-            lines.Add(
-                Line(
-                    Span($"{pad}Changed{rowTag}: ", SpanColor.Header, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
-                )
-            );
-        }
-
-        foreach (var added in result.AddedRows)
-        {
-            var (rowTag, name) = ExtractTag(added);
-            lines.Add(
-                Line(
-                    Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
-                )
-            );
-        }
-
-        foreach (var removed in result.RemovedRows)
-        {
-            var (rowTag, name) = ExtractTag(removed);
-            lines.Add(
-                Line(
-                    Span($"{pad}Removed{rowTag}: ", SpanColor.Removed, SpanStyle.Bold),
-                    Span(name, SpanColor.Default)
-                )
-            );
-        }
 
         return new FormattedDocument(lines);
     }
@@ -133,27 +107,24 @@ public static class FormattedTextBuilder
 
         foreach (var group in groups)
         {
-            var (rowTag, name) = ExtractTag(group.Key);
+            var rowTag = $" (Row {group.Row})";
             if (group.IsNew)
                 lines.Add(
                     Line(
                         Span($"{pad}Added{rowTag}: ", SpanColor.Added, SpanStyle.Bold),
-                        Span(name, SpanColor.Header, SpanStyle.Bold)
+                        Span(group.RowName, SpanColor.Header, SpanStyle.Bold)
                     )
                 );
             else
                 lines.Add(
                     Line(
-                        Span($"{pad}{name}", SpanColor.Header, SpanStyle.Bold),
-                        Span($"{rowTag}", SpanColor.Header, SpanStyle.Bold)
+                        Span($"{pad}{group.RowName}", SpanColor.Header, SpanStyle.Bold),
+                        Span(rowTag, SpanColor.Header, SpanStyle.Bold)
                     )
                 );
 
-            foreach (var diff in group.Changes)
-            {
-                var spans = ParseBoldMarkup(pad + " " + diff);
-                lines.Add(new FormattedLine(spans));
-            }
+            foreach (var change in group.Changes)
+                lines.Add(Line(Span($"{pad} {FormatChange(change)}", SpanColor.Default)));
 
             lines.Add(Line()); // blank line between groups
         }
@@ -192,47 +163,10 @@ public static class FormattedTextBuilder
         return new FormattedDocument(lines);
     }
 
-    private static List<FormattedSpan> ParseBoldMarkup(string text)
-    {
-        var spans = new List<FormattedSpan>();
-        int pos = 0;
-
-        while (pos < text.Length)
-        {
-            int boldStart = text.IndexOf("<b>", pos, StringComparison.Ordinal);
-            if (boldStart == -1)
-            {
-                if (pos < text.Length)
-                    spans.Add(Span(text[pos..], SpanColor.Default));
-                break;
-            }
-
-            if (boldStart > pos)
-                spans.Add(Span(text[pos..boldStart], SpanColor.Default));
-
-            int boldEnd = text.IndexOf("</b>", boldStart, StringComparison.Ordinal);
-            if (boldEnd == -1)
-            {
-                spans.Add(Span(text[(boldStart + 3)..], SpanColor.Default, SpanStyle.Bold));
-                break;
-            }
-
-            spans.Add(Span(text[(boldStart + 3)..boldEnd], SpanColor.Default, SpanStyle.Bold));
-            pos = boldEnd + 4;
-        }
-
-        return spans;
-    }
-
-    private static (string Tag, string Name) ExtractTag(string text)
-    {
-        if (text.Length < 3 || text[0] != '(')
-            return ("", text);
-        var end = text.IndexOf(") ");
-        if (end < 0)
-            return ("", text);
-        return (" " + text[..(end + 1)], text[(end + 2)..]);
-    }
+    public static string FormatChange(ValueChange change) =>
+        change.OldValue is null
+            ? $"{change.Column}: '{change.NewValue}'"
+            : $"{change.Column}: '{change.OldValue}' -> '{change.NewValue}'";
 
     private static FormattedSpan Span(
         string text,

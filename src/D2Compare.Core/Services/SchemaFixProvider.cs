@@ -1,218 +1,128 @@
+using D2Compare.Core.Models;
+
 namespace D2Compare.Core.Services;
 
 // Recognizes known schema transformations between D2 versions that look like
-// adds/removes but are actually renames. Ported from Form1.ApplyManualFixes().
+// adds/removes but are actually renames. Every rule is exact and works in both
+// directions, so comparing a newer version against an older one also matches.
 public static class SchemaFixProvider
 {
-    private static readonly Dictionary<string, string> MonstatsMappings = new()
+    // Per-file renames, keyed by file name without extension
+    private static readonly Dictionary<string, (string Old, string New)[]> FileRenames = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
-        { "ShieldBlockOverride", "NoShldBlock" },
-        { "TreasureClass", "TreasureClass1" },
-        { "TreasureClassChamp", "TreasureClass2" },
-        { "TreasureClassUnique", "TreasureClass3" },
-        { "TreasureClassQuest", "TreasureClass4" },
-        { "TreasureClass(N)", "TreasureClass1(N)" },
-        { "TreasureClassChamp(N)", "TreasureClass2(N)" },
-        { "TreasureClassUnique(N)", "TreasureClass3(N)" },
-        { "TreasureClassQuest(N)", "TreasureClass4(N)" },
-        { "TreasureClass(H)", "TreasureClass1(H)" },
-        { "TreasureClassChamp(H)", "TreasureClass2(H)" },
-        { "TreasureClassUnique(H)", "TreasureClass3(H)" },
-        { "TreasureClassQuest(H)", "TreasureClass4(H)" },
+        ["cubemain"] = [("ladder", "firstLadderSeason")],
+        ["difficultylevels"] = [("HireableBossDamagePercent", "MercenaryDamagePercentVSBoss")],
+        ["events"] = [("*desc", "*description")],
+        ["itemtypes"] =
+        [
+            ("MaxSock1", "MaxSockets1"),
+            ("MaxSock25", "MaxSockets2"),
+            ("MaxSock40", "MaxSockets3"),
+        ],
+        ["levels"] =
+        [
+            ("MonLvl1", "MonLvl"),
+            ("MonLvl2", "MonLvl(N)"),
+            ("MonLvl3", "MonLvl(H)"),
+            ("MonLvl1Ex", "MonLvlEx"),
+            ("MonLvl2Ex", "MonLvlEx(N)"),
+            ("MonLvl3Ex", "MonLvlEx(H)"),
+        ],
+        ["misscalc"] = [("*desc", "*description")],
+        ["monstats"] =
+        [
+            ("NoShldBlock", "ShieldBlockOverride"),
+            ("TreasureClass1", "TreasureClass"),
+            ("TreasureClass2", "TreasureClassChamp"),
+            ("TreasureClass3", "TreasureClassUnique"),
+            ("TreasureClass4", "TreasureClassQuest"),
+            ("TreasureClass1(N)", "TreasureClass(N)"),
+            ("TreasureClass2(N)", "TreasureClassChamp(N)"),
+            ("TreasureClass3(N)", "TreasureClassUnique(N)"),
+            ("TreasureClass4(N)", "TreasureClassQuest(N)"),
+            ("TreasureClass1(H)", "TreasureClass(H)"),
+            ("TreasureClass2(H)", "TreasureClassChamp(H)"),
+            ("TreasureClass3(H)", "TreasureClassUnique(H)"),
+            ("TreasureClass4(H)", "TreasureClassQuest(H)"),
+        ],
+        ["objects"] = [("description - not loaded", "*Description")],
+        ["properties"] = [("*done", "*Enabled"), ("*desc", "*Tooltip"), ("*param", "*Parameter")],
+        ["runes"] = [("*runes", "*RunesUsed"), ("server", "firstLadderSeason")],
+        ["setitems"] = [("*item", "*ItemName")],
+        ["shrines"] = [("Shrine name", "Name")],
+        ["skillcalc"] = [("*desc", "*Description")],
+        ["treasureclassex"] =
+        [
+            ("SumItems", "*ItemProbSum"),
+            ("TotalProb", "*ItemProbTotal"),
+            ("DropChance", "*TreasureClassDropChance"),
+            ("Term", "*eol"),
+            ("ladder", "firstLadderSeason"),
+        ],
+        ["uniqueitems"] = [("*type", "*ItemName"), ("ladder", "firstLadderSeason")],
+        ["weapons"] = [("special", "*comment")],
     };
 
-    private static readonly List<string> ItemStatCostAdded =
+    // Typos fixed in D2R (NPC names in Armor/Misc/Weapons, Nihlathak missiles)
+    private static readonly (string Old, string New)[] Substitutions =
     [
-        "lasthitreactframe",
-        "create_season",
-        "bonus_mindamage",
-        "bonus_maxdamage",
-        "item_pierce_cold_immunity",
-        "item_pierce_fire_immunity",
-        "item_pierce_light_immunity",
-        "item_pierce_poison_immunity",
-        "item_pierce_damage_immunity",
-        "item_pierce_magic_immunity",
-        "item_charge_noconsume",
-        "modifierlist_castid",
-        "item_noconsume",
-        "passive_mastery_noconsume",
-        "passive_mastery_replenish_oncrit",
-        "passive_mastery_gethit_rate",
-        "passive_mastery_attack_speed",
+        ("Hralti", "Hratli"),
+        ("Drehya", "Anya"),
+        ("nehlithak", "nihlathak"),
     ];
 
-    private static readonly List<string> ItemStatCostRemoved =
-    [
-        "unused183",
-        "unused184",
-        "unused185",
-        "unused186",
-        "unused187",
-        "unused189",
-        "unused190",
-        "unused191",
-        "unused192",
-        "unused193",
-        "unused200",
-        "unused202",
-        "unused204",
-        "unused205",
-        "unused206",
-        "unused207",
-        "unused212",
-    ];
-
-    public static bool IsKnownRename(string addedHeader, string removedHeader, string fileType)
+    // Files where retired "unusedNNN" row slots get reused for new entries at the same position
+    private static readonly HashSet<string> SlotReuseFiles = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Comment column markers (* prefix)
-        if (addedHeader.ToLower().Replace("*", "") == removedHeader.ToLower().Replace("*", ""))
-            return true;
+        "itemstatcost",
+    };
 
-        // NPC typo/name changes
-        if (
-            (Contains(addedHeader, "hratli") && Contains(removedHeader, "hralti"))
-            || (Contains(addedHeader, "anya") && Contains(removedHeader, "drehya"))
-        )
-            return true;
+    // Names that only differ by case, whitespace or the "*" comment marker are the same entry
+    public static string Canonical(string name) => name.Replace("*", "").Trim().ToLowerInvariant();
 
-        // CubeMain hotfix
-        if (Contains(addedHeader, "firstLadderSeason") && Contains(removedHeader, "ladder"))
-            return true;
+    // Canonical names a renamed counterpart of `name` may have in the other version
+    public static IEnumerable<string> RenameKeys(string fileName, string name)
+    {
+        var canonical = Canonical(name);
+        yield return canonical;
 
-        // DifficultyLevels hotfix
-        if (
-            Contains(addedHeader, "MercenaryDamagePercentVSBoss")
-            && Contains(removedHeader, "HireableBossDamagePercent")
-        )
-            return true;
-
-        // ItemStatCost
-        if (
-            (
-                ItemStatCostAdded.Contains(addedHeader, StringComparer.OrdinalIgnoreCase)
-                && ItemStatCostRemoved.Contains(removedHeader, StringComparer.OrdinalIgnoreCase)
-            )
-            || (
-                ItemStatCostAdded.Contains(removedHeader, StringComparer.OrdinalIgnoreCase)
-                && ItemStatCostRemoved.Contains(addedHeader, StringComparer.OrdinalIgnoreCase)
-            )
-        )
-            return true;
-
-        // Itemtypes hotfix
-        if (
-            (Contains(addedHeader, "MaxSockets1") && Contains(removedHeader, "MaxSock1"))
-            || (Contains(addedHeader, "MaxSockets2") && Contains(removedHeader, "MaxSock25"))
-            || (Contains(addedHeader, "MaxSockets3") && Contains(removedHeader, "MaxSock40"))
-            || (Contains(addedHeader, "Any") && Contains(removedHeader, "None"))
-        )
-            return true;
-
-        // Levels hotfix
-        if (
-            (Contains(addedHeader, "MonLvl") && Contains(removedHeader, "MonLvl1"))
-            || (Contains(addedHeader, "MonLvl(N)") && Contains(removedHeader, "MonLvl2"))
-            || (Contains(addedHeader, "MonLvl(H)") && Contains(removedHeader, "MonLvl3"))
-            || (Contains(addedHeader, "MonLvlEx") && Contains(removedHeader, "MonLvl1Ex"))
-            || (Contains(addedHeader, "MonLvlEx(N)") && Contains(removedHeader, "MonLvl2Ex"))
-            || (Contains(addedHeader, "MonLvlEx(H)") && Contains(removedHeader, "MonLvl3Ex"))
-        )
-            return true;
-
-        // Missiles hotfix (nihlathak/nehlithak typo)
-        string[] nihlathakSuffixes =
-        [
-            "control",
-            "swoosh",
-            "debris1",
-            "debris2",
-            "debris3",
-            "debris4",
-            "glow",
-            "hole",
-            "holelight",
-            "glow2",
-            "bonechips",
-        ];
-        foreach (var suffix in nihlathakSuffixes)
+        foreach (var (oldPart, newPart) in Substitutions)
         {
-            if (
-                Contains(addedHeader, "nihlathak" + suffix)
-                && Contains(removedHeader, "nehlithak" + suffix)
-            )
-                return true;
+            if (name.Contains(oldPart, StringComparison.OrdinalIgnoreCase))
+                yield return Canonical(
+                    name.Replace(oldPart, newPart, StringComparison.OrdinalIgnoreCase)
+                );
+            if (name.Contains(newPart, StringComparison.OrdinalIgnoreCase))
+                yield return Canonical(
+                    name.Replace(newPart, oldPart, StringComparison.OrdinalIgnoreCase)
+                );
         }
 
-        // Monstats hotfix
-        foreach (var mapping in MonstatsMappings)
+        if (!FileRenames.TryGetValue(FileKey(fileName), out var renames))
+            yield break;
+
+        foreach (var (oldName, newName) in renames)
         {
-            if (
-                (
-                    addedHeader.Equals(mapping.Key, StringComparison.OrdinalIgnoreCase)
-                    && removedHeader.Equals(mapping.Value, StringComparison.OrdinalIgnoreCase)
-                )
-                || (
-                    addedHeader.Equals(mapping.Value, StringComparison.OrdinalIgnoreCase)
-                    && removedHeader.Equals(mapping.Key, StringComparison.OrdinalIgnoreCase)
-                )
-            )
-                return true;
+            if (Canonical(oldName) == canonical)
+                yield return Canonical(newName);
+            if (Canonical(newName) == canonical)
+                yield return Canonical(oldName);
         }
-
-        // Objects hotfix
-        if (
-            Contains(addedHeader, "*Description")
-            && Contains(removedHeader, "description - not loaded")
-        )
-            return true;
-
-        // Runes hotfix
-        if (
-            (Contains(addedHeader, "*RunesUsed") && Contains(removedHeader, "*runes"))
-            || (Contains(addedHeader, "firstLadderSeason") && Contains(removedHeader, "server"))
-        )
-            return true;
-
-        // SetItems hotfix
-        if (Contains(addedHeader, "*ItemName") && Contains(removedHeader, "*item"))
-            return true;
-
-        // Shrines hotfix
-        if (
-            (Contains(addedHeader, "Name") && Contains(removedHeader, "Shrine Type"))
-            || (Contains(addedHeader, "*Shrine Type") && Contains(removedHeader, "Shrine name"))
-            || (Contains(addedHeader, "*Effect") && Contains(removedHeader, "Effect"))
-        )
-            return true;
-
-        // TreasureClassEx hotfix
-        if (
-            (Contains(addedHeader, "*ItemProbSum") && Contains(removedHeader, "SumItems"))
-            || (Contains(addedHeader, "*ItemProbTotal") && Contains(removedHeader, "TotalProb"))
-            || (
-                Contains(addedHeader, "*TreasureClassDropChance")
-                && Contains(removedHeader, "DropChance")
-            )
-            || (Contains(addedHeader, "*eol") && Contains(removedHeader, "Term"))
-        )
-            return true;
-
-        // UniqueItems hotfix
-        if (
-            (Contains(addedHeader, "*ItemName") && Contains(removedHeader, "*type"))
-            || (Contains(addedHeader, "*Shrine Type") && Contains(removedHeader, "Shrine name"))
-            || (Contains(addedHeader, "*Effect") && Contains(removedHeader, "Effect"))
-        )
-            return true;
-
-        // Weapons hotfix
-        if (Contains(addedHeader, "*comment") && Contains(removedHeader, "special"))
-            return true;
-
-        return false;
     }
 
-    private static bool Contains(string source, string value) =>
-        source.IndexOf(value, StringComparison.OrdinalIgnoreCase) != -1;
+    public static bool IsKnownRename(string fileName, string oldName, string newName) =>
+        RenameKeys(fileName, oldName).Contains(Canonical(newName));
+
+    // A retired slot ("unusedNNN") replaced by a new entry at the same position
+    public static bool IsReusedSlot(string fileName, IndexedName removed, IndexedName added) =>
+        SlotReuseFiles.Contains(FileKey(fileName))
+        && removed.Index == added.Index
+        && (IsUnused(removed.Name) || IsUnused(added.Name));
+
+    private static bool IsUnused(string name) =>
+        name.StartsWith("unused", StringComparison.OrdinalIgnoreCase);
+
+    private static string FileKey(string fileName) => Path.GetFileNameWithoutExtension(fileName);
 }

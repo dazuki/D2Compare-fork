@@ -1,5 +1,12 @@
 namespace D2Compare.Core.Models;
 
-// A group of differences for a single row.
-// Key is like "(Row 42) RowName", Changes are individual field diffs.
-public record DiffGroup(string Key, IReadOnlyList<string> Changes, bool IsNew = false);
+// OldValue is null for cells of a row that only exists in the target
+public record ValueChange(string Column, string? OldValue, string NewValue);
+
+// All value changes for one row. Row is the 1-based row number shown to the user.
+public record DiffGroup(
+    int Row,
+    string RowName,
+    IReadOnlyList<ValueChange> Changes,
+    bool IsNew = false
+);
