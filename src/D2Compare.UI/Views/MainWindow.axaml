@@ -253,6 +253,12 @@
       <Setter Property="Padding" Value="6,4" />
       <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
+    <Style Selector="ToggleButton.collapse ti|TablerIcon">
+      <Setter Property="Brush" Value="{DynamicResource IconForegroundBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.collapse:checked ti|TablerIcon">
+      <Setter Property="Brush" Value="White" />
+    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -697,7 +703,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsDown"
                 IsVisible="{Binding ColumnsCollapsed}"
                 StrokeWidth="2"
@@ -705,7 +710,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsUp"
                 IsVisible="{Binding !ColumnsCollapsed}"
                 StrokeWidth="2"
@@ -783,7 +787,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsDown"
                 IsVisible="{Binding RowsCollapsed}"
                 StrokeWidth="2"
@@ -791,7 +794,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsUp"
                 IsVisible="{Binding !RowsCollapsed}"
                 StrokeWidth="2"
@@ -862,7 +864,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsDown"
                 IsVisible="{Binding ValuesCollapsed}"
                 StrokeWidth="2"
@@ -870,7 +871,6 @@
               <ti:TablerIcon
                 Width="16"
                 Height="16"
-                Brush="{DynamicResource IconForegroundBrush}"
                 Icon="IconChevronsUp"
                 IsVisible="{Binding !ValuesCollapsed}"
                 StrokeWidth="2"
