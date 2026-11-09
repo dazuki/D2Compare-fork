@@ -39,7 +39,7 @@
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
       <controls:IntToBoolConverter x:Key="IntToBool" />
-      <FontFamily x:Key="MonoFont">avares://D2Compare/Assets/Fonts#JetBrains Mono</FontFamily>
+      <FontFamily x:Key="MonoFont">fonts:D2Compare#Noto Sans Mono</FontFamily>
       <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
     </ResourceDictionary>
