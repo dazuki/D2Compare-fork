@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using D2Compare.ViewModels;
 
 namespace D2Compare.Views;
@@ -11,6 +12,25 @@ public partial class MainWindow : Window
         InitializeComponent();
         Opened += OnOpened;
         Closing += OnClosing;
+
+        foreach (var grid in new[] { ColumnsGrid, RowsGrid, ValuesGrid })
+            grid.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == DataGrid.ItemsSourceProperty)
+                    ResetGridLayout(grid);
+            };
+    }
+
+    // Auto widths only grow and scroll offsets survive an ItemsSource swap, so a new
+    // comparison would otherwise inherit the previous one's layout
+    private static void ResetGridLayout(DataGrid grid)
+    {
+        foreach (var column in grid.Columns)
+            if (column.Width.IsAuto)
+                column.Width = DataGridLength.Auto;
+
+        if (grid.FindDescendantOfType<ScrollViewer>() is { } scrollViewer)
+            scrollViewer.Offset = default;
     }
 
     private void OnOpened(object? sender, EventArgs e)

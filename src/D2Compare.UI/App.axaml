@@ -8,10 +8,14 @@
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.v2.xaml" />
   </Application.Styles>
 
   <Application.Resources>
     <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Avalonia.Controls.DataGrid/Themes/DensityStyles/Fluent.Compact.xaml" />
+      </ResourceDictionary.MergedDictionaries>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="IconForegroundBrush" Color="Black" />
@@ -77,6 +81,9 @@
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
       <controls:IntToBoolConverter x:Key="IntToBool" />
+      <x:Double x:Key="DataGridCellFontSize">13</x:Double>
+      <x:Double x:Key="DataGridRowGroupHeaderFontSize">13</x:Double>
+      <x:Double x:Key="DataGridColumnHeaderFontSize">13</x:Double>
       <FontFamily x:Key="MonoFont">fonts:D2Compare#Noto Sans Mono</FontFamily>
       <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>

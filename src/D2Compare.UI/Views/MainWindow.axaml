@@ -2,7 +2,9 @@
   x:Class="D2Compare.Views.MainWindow"
   xmlns="https://github.com/avaloniaui"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:collections="using:Avalonia.Collections"
   xmlns:controls="using:D2Compare.Controls"
+  xmlns:models="using:D2Compare.Core.Models"
   xmlns:ti="using:TablerIcons"
   xmlns:vm="using:D2Compare.ViewModels"
   Title="{Binding AppVersion, StringFormat='D2Compare-fork v{0} (fork by dazuki)'}"
@@ -12,6 +14,242 @@
   Background="{DynamicResource WindowBackgroundBrush}"
   Icon="/Assets/compare_yRb_icon.ico"
 >
+  <Window.Resources>
+    <!--  Conditional formatting themes for the Change column  -->
+    <ControlTheme
+      x:Key="AddedCellTheme"
+      TargetType="DataGridCell"
+      BasedOn="{StaticResource {x:Type DataGridCell}}"
+    >
+      <Setter Property="Foreground" Value="{DynamicResource StatAddedBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </ControlTheme>
+    <ControlTheme
+      x:Key="RemovedCellTheme"
+      TargetType="DataGridCell"
+      BasedOn="{StaticResource {x:Type DataGridCell}}"
+    >
+      <Setter Property="Foreground" Value="{DynamicResource StatRemovedBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </ControlTheme>
+    <ControlTheme
+      x:Key="ChangedCellTheme"
+      TargetType="DataGridCell"
+      BasedOn="{StaticResource {x:Type DataGridCell}}"
+    >
+      <Setter Property="Foreground" Value="{DynamicResource StatChangedBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </ControlTheme>
+    <ControlTheme
+      x:Key="MutedCellTheme"
+      TargetType="DataGridCell"
+      BasedOn="{StaticResource {x:Type DataGridCell}}"
+    >
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </ControlTheme>
+    <!--
+      Copy of ProDataGrid's DataGridRowGroupHeader template (Themes/Generic.xaml, v12.1.5)
+      with the key text swapped for a ContentControl: file groups (FileSummary keys) show
+      the name plus colored counts, data-row groups (string keys) show plain text.
+    -->
+    <ControlTheme
+      x:Key="DiffRowGroupHeaderTheme"
+      TargetType="DataGridRowGroupHeader"
+      BasedOn="{StaticResource {x:Type DataGridRowGroupHeader}}"
+    >
+      <Setter Property="Template">
+        <ControlTemplate x:DataType="collections:DataGridCollectionViewGroup">
+          <DataGridFrozenGrid
+            Name="PART_Root"
+            MinHeight="{TemplateBinding MinHeight}"
+            Background="{TemplateBinding Background}"
+            ColumnDefinitions="Auto,Auto,Auto,Auto,*"
+            RowDefinitions="*,Auto,Auto"
+          >
+            <Rectangle Name="PART_IndentSpacer" Grid.Column="1" />
+            <ToggleButton
+              Name="PART_ExpanderButton"
+              Grid.Column="2"
+              Margin="{DynamicResource DataGridRowGroupHeaderExpanderMargin}"
+              VerticalAlignment="{TemplateBinding ContentVerticalAlignment}"
+              Theme="{StaticResource DataGridRowGroupExpanderButtonTheme}"
+              BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}"
+              Background="{TemplateBinding Background}"
+              CornerRadius="{TemplateBinding CornerRadius}"
+              IsTabStop="False"
+              Foreground="{TemplateBinding Foreground}"
+            />
+
+            <StackPanel
+              Grid.Column="3"
+              Margin="{DynamicResource DataGridRowGroupHeaderContentMargin}"
+              VerticalAlignment="{TemplateBinding ContentVerticalAlignment}"
+              Orientation="Horizontal"
+            >
+              <TextBlock
+                Name="PART_PropertyNameElement"
+                Margin="{DynamicResource DataGridRowGroupHeaderTextMargin}"
+                IsVisible="{TemplateBinding IsPropertyNameVisible}"
+                Foreground="{TemplateBinding Foreground}"
+              />
+              <ContentControl
+                Margin="{DynamicResource DataGridRowGroupHeaderTextMargin}"
+                VerticalAlignment="Center"
+                Content="{Binding Key}"
+                Foreground="{TemplateBinding Foreground}"
+              >
+                <!--  Same size for both levels; only file names are SemiBold so they lead  -->
+                <ContentControl.Styles>
+                  <Style Selector="TextBlock">
+                    <Setter
+                      Property="FontSize"
+                      Value="{DynamicResource DataGridRowGroupHeaderFontSize}"
+                    />
+                    <Setter Property="FontWeight" Value="Normal" />
+                  </Style>
+                  <Style Selector="StackPanel.file > TextBlock">
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                  </Style>
+                </ContentControl.Styles>
+                <ContentControl.DataTemplates>
+                  <!--  Values: "~changed +new", same order as the panel header  -->
+                  <DataTemplate DataType="models:ValueFileSummary">
+                    <StackPanel Classes="file" Orientation="Horizontal" Spacing="8">
+                      <TextBlock
+                        Foreground="{DynamicResource FileNameBrush}"
+                        Text="{Binding FileName}"
+                      />
+                      <TextBlock
+                        Foreground="{DynamicResource StatChangedBrush}"
+                        IsVisible="{Binding Changed, Converter={StaticResource IntToBool}}"
+                        Text="{Binding Changed, StringFormat='~{0}'}"
+                      />
+                      <TextBlock
+                        Foreground="{DynamicResource StatAddedBrush}"
+                        IsVisible="{Binding Added, Converter={StaticResource IntToBool}}"
+                        Text="{Binding Added, StringFormat='+{0}'}"
+                      />
+                    </StackPanel>
+                  </DataTemplate>
+                  <DataTemplate DataType="models:FileSummary">
+                    <StackPanel Classes="file" Orientation="Horizontal" Spacing="8">
+                      <TextBlock
+                        Foreground="{DynamicResource FileNameBrush}"
+                        Text="{Binding FileName}"
+                      />
+                      <TextBlock
+                        Foreground="{DynamicResource StatAddedBrush}"
+                        IsVisible="{Binding Added, Converter={StaticResource IntToBool}}"
+                        Text="{Binding Added, StringFormat='+{0}'}"
+                      />
+                      <TextBlock
+                        Foreground="{DynamicResource StatRemovedBrush}"
+                        IsVisible="{Binding Removed, Converter={StaticResource IntToBool}}"
+                        Text="{Binding Removed, StringFormat='-{0}'}"
+                      />
+                      <TextBlock
+                        Foreground="{DynamicResource StatChangedBrush}"
+                        IsVisible="{Binding Changed, Converter={StaticResource IntToBool}}"
+                        Text="{Binding Changed, StringFormat='~{0}'}"
+                      />
+                    </StackPanel>
+                  </DataTemplate>
+                </ContentControl.DataTemplates>
+              </ContentControl>
+              <TextBlock
+                Name="PART_ItemCountElement"
+                Margin="{DynamicResource DataGridRowGroupHeaderTextMargin}"
+                IsVisible="{TemplateBinding IsItemCountVisible}"
+                Foreground="{TemplateBinding Foreground}"
+              />
+            </StackPanel>
+
+            <Rectangle
+              x:Name="CurrencyVisual"
+              Grid.ColumnSpan="5"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              Fill="Transparent"
+              IsHitTestVisible="False"
+              IsVisible="False"
+              Stroke="{DynamicResource DataGridCurrencyVisualPrimaryBrush}"
+              StrokeThickness="{DynamicResource DataGridRowGroupCurrencyStrokeThickness}"
+            />
+            <Grid
+              x:Name="FocusVisual"
+              Grid.ColumnSpan="5"
+              IsHitTestVisible="False"
+              IsVisible="False"
+            >
+              <Rectangle
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Fill="Transparent"
+                IsHitTestVisible="False"
+                Stroke="{DynamicResource DataGridCellFocusVisualPrimaryBrush}"
+                StrokeThickness="{DynamicResource DataGridRowGroupFocusPrimaryStrokeThickness}"
+              />
+              <Rectangle
+                Margin="{DynamicResource DataGridRowGroupFocusSecondaryMargin}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Fill="Transparent"
+                IsHitTestVisible="False"
+                Stroke="{DynamicResource DataGridCellFocusVisualSecondaryBrush}"
+                StrokeThickness="{DynamicResource DataGridRowGroupFocusSecondaryStrokeThickness}"
+              />
+            </Grid>
+
+            <DataGridRowHeader
+              Name="PART_RowHeader"
+              Grid.RowSpan="3"
+              DataGridFrozenGrid.IsFrozen="True"
+            />
+
+            <DataGridSummaryRow
+              Name="PART_SummaryRow"
+              Grid.Row="1"
+              Grid.ColumnSpan="5"
+              IsVisible="False"
+            />
+
+            <Rectangle
+              x:Name="PART_BottomGridLine"
+              Grid.Row="2"
+              Grid.ColumnSpan="5"
+              Height="{DynamicResource DataGridRowGroupBottomGridLineHeight}"
+            />
+          </DataGridFrozenGrid>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="DataGrid.diff">
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="AutoGenerateColumns" Value="False" />
+      <Setter Property="HeadersVisibility" Value="Column" />
+      <Setter Property="GridLinesVisibility" Value="Horizontal" />
+      <Setter Property="SelectionMode" Value="Extended" />
+      <Setter Property="ClipboardCopyMode" Value="IncludeHeader" />
+      <Setter Property="CanUserResizeColumns" Value="True" />
+      <Setter Property="CanUserSortColumns" Value="True" />
+      <Setter Property="AreRowGroupHeadersFrozen" Value="True" />
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="RowGroupTheme" Value="{StaticResource DiffRowGroupHeaderTheme}" />
+    </Style>
+    <Style Selector="DataGrid.diff DataGridColumnHeader">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="DataGrid.diff DataGridRowGroupHeader">
+      <Setter Property="IsPropertyNameVisible" Value="False" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+
   <Grid RowDefinitions="Auto,*,Auto">
     <!--  Top Control Area  -->
     <Grid Grid.Row="0" Margin="10,10,10,10" ColumnDefinitions="*,Auto">
@@ -314,7 +552,7 @@
           MaxHeight="220"
           Padding="8"
           Background="{DynamicResource PanelBackgroundBrush}"
-          BorderBrush="Gray"
+          BorderBrush="{DynamicResource PanelBorderBrush}"
           BorderThickness="1"
         >
           <Panel>
@@ -326,7 +564,7 @@
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               FontStyle="Italic"
-              Foreground="Gray"
+              Foreground="{DynamicResource MutedBrush}"
               IsVisible="{Binding HasNoFileChanges}"
               Text="No changes..."
             />
@@ -382,7 +620,7 @@
           >
             <TextBlock.Styles>
               <Style Selector="TextBlock:not(.warning)">
-                <Setter Property="Foreground" Value="Gray" />
+                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
               </Style>
               <Style Selector="TextBlock.warning">
                 <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
@@ -533,15 +771,45 @@
         Grid.Row="1"
         Grid.Column="0"
         Background="{DynamicResource PanelBackgroundBrush}"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource PanelBorderBrush}"
         BorderThickness="1"
       >
-        <controls:FormattedTextPresenter
-          Padding="6"
-          Document="{Binding ColumnsDocument}"
-          FontFamily="{StaticResource MonoFont}"
-          SearchTerm="{Binding ActiveSearchTerm}"
-        />
+        <DataGrid
+          x:Name="ColumnsGrid"
+          Classes="diff"
+          ConditionalFormattingModel="{Binding ColumnsFormatting}"
+          ItemsSource="{Binding ColumnsView}"
+          SearchModel="{Binding ColumnsSearch}"
+        >
+          <DataGrid.Columns>
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              Binding="{Binding Change}"
+              Header="Change"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              Binding="{Binding Position}"
+              Header="#"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding OldName}"
+              Header="Source"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding NewName}"
+              Header="Target"
+            />
+          </DataGrid.Columns>
+        </DataGrid>
       </Border>
 
       <!--  Splitter 1  -->
@@ -571,15 +839,45 @@
         Grid.Row="1"
         Grid.Column="2"
         Background="{DynamicResource PanelBackgroundBrush}"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource PanelBorderBrush}"
         BorderThickness="1"
       >
-        <controls:FormattedTextPresenter
-          Padding="6"
-          Document="{Binding RowsDocument}"
-          FontFamily="{StaticResource MonoFont}"
-          SearchTerm="{Binding ActiveSearchTerm}"
-        />
+        <DataGrid
+          x:Name="RowsGrid"
+          Classes="diff"
+          ConditionalFormattingModel="{Binding RowsFormatting}"
+          ItemsSource="{Binding RowsView}"
+          SearchModel="{Binding RowsSearch}"
+        >
+          <DataGrid.Columns>
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              Binding="{Binding Change}"
+              Header="Change"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              Binding="{Binding Position}"
+              Header="#"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding OldName}"
+              Header="Source"
+            />
+            <DataGridTextColumn
+              x:DataType="models:SchemaDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding NewName}"
+              Header="Target"
+            />
+          </DataGrid.Columns>
+        </DataGrid>
       </Border>
 
       <!--  Splitter 2  -->
@@ -609,15 +907,46 @@
         Grid.Row="1"
         Grid.Column="4"
         Background="{DynamicResource PanelBackgroundBrush}"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource PanelBorderBrush}"
         BorderThickness="1"
       >
-        <controls:FormattedTextPresenter
-          Padding="6"
-          Document="{Binding ValuesDocument}"
-          FontFamily="{StaticResource MonoFont}"
-          SearchTerm="{Binding ActiveSearchTerm}"
-        />
+        <DataGrid
+          x:Name="ValuesGrid"
+          Classes="diff"
+          CanUserSortColumns="False"
+          ItemsSource="{Binding ValuesView}"
+          SearchModel="{Binding ValuesSearch}"
+        >
+          <DataGrid.Columns>
+            <!--  Hidden so search also matches the row names shown in group headers  -->
+            <DataGridTextColumn
+              x:DataType="models:ValueDiffRow"
+              Binding="{Binding RowLabel}"
+              Header="Row"
+              IsVisible="False"
+            />
+            <DataGridTextColumn
+              x:DataType="models:ValueDiffRow"
+              Width="Auto"
+              Binding="{Binding Column}"
+              Header="Column"
+            />
+            <DataGridTextColumn
+              x:DataType="models:ValueDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding OldValue}"
+              Header="Source"
+            />
+            <DataGridTextColumn
+              x:DataType="models:ValueDiffRow"
+              Width="Auto"
+              MinWidth="80"
+              Binding="{Binding NewValue}"
+              Header="Target"
+            />
+          </DataGrid.Columns>
+        </DataGrid>
       </Border>
 
       <!--  Loading Overlay  -->
@@ -672,7 +1001,7 @@
         <TextBlock
           VerticalAlignment="Center"
           FontSize="12"
-          Foreground="Gray"
+          Foreground="{DynamicResource MutedBrush}"
           IsVisible="{Binding IsDownloadingUpdate}"
           Text="{Binding UpdateStatusText}"
         />

@@ -2,12 +2,16 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Avalonia.Collections;
 using Avalonia.Controls;
+using Avalonia.Controls.DataGridConditionalFormatting;
+using Avalonia.Controls.DataGridSearching;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using D2Compare.Controls;
 using D2Compare.Core.Models;
 using D2Compare.Core.Services;
 using D2Compare.Services;
@@ -107,22 +111,45 @@ public partial class MainViewModel : ObservableObject
     private string _searchText = "";
 
     [ObservableProperty]
-    private string _activeSearchTerm = "";
-
-    [ObservableProperty]
     private string _matchLabel = "";
 
     [ObservableProperty]
     private bool _isLoading;
 
     [ObservableProperty]
-    private FormattedDocument? _columnsDocument;
+    private DataGridCollectionView? _columnsView;
 
     [ObservableProperty]
-    private FormattedDocument? _rowsDocument;
+    private DataGridCollectionView? _rowsView;
 
     [ObservableProperty]
-    private FormattedDocument? _valuesDocument;
+    private DataGridCollectionView? _valuesView;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveColumnsAsTextCommand))]
+    private bool _columnsHasContent;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveRowsAsTextCommand))]
+    private bool _rowsHasContent;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveValuesAsTextCommand))]
+    private bool _valuesHasContent;
+
+    [ObservableProperty]
+    private bool _isBatchView;
+
+    // True while a search narrows the grids to matching rows
+    [ObservableProperty]
+    private bool _isSearchFiltered;
+
+    public HighlightOnlySearchModel ColumnsSearch { get; } = new(SearchHighlightMode.TextAndCell);
+    public HighlightOnlySearchModel RowsSearch { get; } = new(SearchHighlightMode.TextAndCell);
+    public HighlightOnlySearchModel ValuesSearch { get; } = new(SearchHighlightMode.TextAndCell);
+
+    public ConditionalFormattingModel ColumnsFormatting { get; } = CreateChangeKindFormatting();
+    public ConditionalFormattingModel RowsFormatting { get; } = CreateChangeKindFormatting();
 
     [ObservableProperty]
     private FormattedDocument? _filesDocument;
@@ -163,6 +190,17 @@ public partial class MainViewModel : ObservableObject
     private string _sourceFolderPath = "";
     private string _targetFolderPath = "";
     private List<CompareResult> _batchResults = new();
+
+    // Full rows of the current comparison; a search filters these into the visible rows
+    private List<SchemaDiffRow> _allColumnRows = [];
+    private List<SchemaDiffRow> _allRowRows = [];
+    private List<ValueDiffRow> _allValueRows = [];
+
+    // What the grids show right now; Export Summary writes these
+    private List<SchemaDiffRow> _visibleColumnRows = [];
+    private List<SchemaDiffRow> _visibleRowRows = [];
+    private List<ValueDiffRow> _visibleValueRows = [];
+    private string _activeSearchTerm = "";
 
     // Bumped by every new comparison so results from a superseded run are dropped
     private int _comparisonGeneration;
@@ -265,6 +303,9 @@ public partial class MainViewModel : ObservableObject
             SelectedTargetIndex = savedTarget;
 
         ApplyDefaultVersions();
+
+        foreach (var search in AllSearchModels)
+            search.ResultsChanged += (_, _) => UpdateMatchLabel();
 
         if (!_settings.DisableUpdateCheck)
             _ = CheckForUpdateAsync();
@@ -376,59 +417,106 @@ public partial class MainViewModel : ObservableObject
             BatchReloadNeeded = true;
     }
 
+    private HighlightOnlySearchModel[] AllSearchModels => [ColumnsSearch, RowsSearch, ValuesSearch];
+
+    // Colors the Change column; theme keys resolve from MainWindow resources
+    private static ConditionalFormattingModel CreateChangeKindFormatting()
+    {
+        var model = new ConditionalFormattingModel();
+        model.Apply([
+            ChangeKindRule(ChangeKind.Added, "AddedCellTheme"),
+            ChangeKindRule(ChangeKind.Removed, "RemovedCellTheme"),
+            ChangeKindRule(ChangeKind.Changed, "ChangedCellTheme"),
+            ChangeKindRule(ChangeKind.Unchanged, "MutedCellTheme"),
+        ]);
+        return model;
+    }
+
+    private static ConditionalFormattingDescriptor ChangeKindRule(
+        ChangeKind kind,
+        string themeKey
+    ) =>
+        new(
+            ruleId: kind,
+            @operator: ConditionalFormattingOperator.Equals,
+            columnId: nameof(SchemaDiffRow.Change),
+            value: kind.ToString(),
+            themeKey: themeKey
+        );
+
     [RelayCommand]
     private async Task ExecuteSearch()
     {
+        var term = SearchText.Trim();
+        if (term.Length == 0)
+        {
+            ClearSearch();
+            return;
+        }
+
+        var generation = _comparisonGeneration;
+        var (allColumns, allRows, allValues) = (_allColumnRows, _allRowRows, _allValueRows);
         IsLoading = true;
-        StatusText = string.IsNullOrEmpty(SearchText) ? "Clearing..." : "Searching...";
+        StatusText = "Searching...";
 
-        // Yield a frame so the loading indicator renders before the heavy highlight rebuild
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-        ActiveSearchTerm = SearchText;
-
-        if (string.IsNullOrEmpty(SearchText))
+        try
         {
-            MatchLabel = "";
-            IsLoading = false;
-            StatusText = "";
-            return;
+            var (columns, rows, values) = await Task.Run(() =>
+                (
+                    DiffRowBuilder.Filter(allColumns, term),
+                    DiffRowBuilder.Filter(allRows, term),
+                    DiffRowBuilder.Filter(allValues, term)
+                )
+            );
+            if (generation != _comparisonGeneration)
+                return;
+
+            _activeSearchTerm = term;
+            IsSearchFiltered = true;
+            ShowRows(columns, rows, values);
+
+            // Highlights the term inside the remaining cells
+            var descriptor = new SearchDescriptor(
+                term,
+                comparison: StringComparison.OrdinalIgnoreCase
+            );
+            foreach (var search in AllSearchModels)
+                search.SetOrUpdate(descriptor);
+            UpdateMatchLabel();
         }
-
-        var doc = ValuesDocument;
-        if (doc is null)
+        finally
         {
-            MatchLabel = "";
-            IsLoading = false;
-            StatusText = "";
-            return;
-        }
-
-        var term = SearchText;
-        int count = await Task.Run(() =>
-        {
-            int c = 0;
-            foreach (var line in doc.Lines)
+            if (generation == _comparisonGeneration)
             {
-                foreach (var span in line.Spans)
-                {
-                    int pos = 0;
-                    while (pos < span.Text.Length)
-                    {
-                        int idx = span.Text.IndexOf(term, pos, StringComparison.OrdinalIgnoreCase);
-                        if (idx == -1)
-                            break;
-                        c++;
-                        pos = idx + term.Length;
-                    }
-                }
+                IsLoading = false;
+                StatusText = "";
             }
-            return c;
-        });
+        }
+    }
 
-        MatchLabel = count > 0 ? $"{count} matches" : "0 matches";
-        IsLoading = false;
-        StatusText = "";
+    private void ClearSearch()
+    {
+        foreach (var search in AllSearchModels)
+            search.Clear();
+        MatchLabel = "";
+
+        if (IsSearchFiltered)
+        {
+            IsSearchFiltered = false;
+            ShowRows(_allColumnRows, _allRowRows, _allValueRows);
+        }
+    }
+
+    private void UpdateMatchLabel()
+    {
+        if (!IsSearchFiltered)
+        {
+            MatchLabel = "";
+            return;
+        }
+        var matches = AllSearchModels.Sum(s => s.Results.Count);
+        var rows = _visibleColumnRows.Count + _visibleRowRows.Count + _visibleValueRows.Count;
+        MatchLabel = $"{matches} matches in {rows} rows";
     }
 
     [RelayCommand]
@@ -462,7 +550,7 @@ public partial class MainViewModel : ObservableObject
 
             _batchResults = results;
             SelectedFileIndex = -1;
-            RebuildBatchDocuments();
+            ShowResults(results, isBatch: true);
             BatchReloadNeeded = false;
             SearchText = "";
         }
@@ -657,27 +745,78 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private void RebuildBatchDocuments()
+    private void ShowResults(IReadOnlyList<CompareResult> results, bool isBatch)
     {
-        var omit = OmitUnchangedFiles;
+        var includeUnchanged = isBatch && !OmitUnchangedFiles;
+        _allColumnRows = DiffRowBuilder.BuildColumnRows(results, includeUnchanged);
+        _allRowRows = DiffRowBuilder.BuildRowRows(results, includeUnchanged);
+        _allValueRows = DiffRowBuilder.BuildValueRows(results, ShowOnlyNewRows);
 
-        var colResults = omit ? _batchResults.Where(r => r.HasColumnChanges) : _batchResults;
-        var rowResults = omit ? _batchResults.Where(r => r.HasRowChanges) : _batchResults;
-        var valResults = omit
-            ? _batchResults.Where(r => r.GroupedDifferences.Count > 0)
-            : _batchResults;
+        foreach (var search in AllSearchModels)
+            search.Clear();
+        MatchLabel = "";
+        IsSearchFiltered = false;
+        IsBatchView = isBatch;
+        ShowRows(_allColumnRows, _allRowRows, _allValueRows);
+        UpdateStats(results);
+    }
 
-        ColumnsDocument = FormattedTextBuilder.MergeDocuments(
-            colResults.Select(r => FormattedTextBuilder.BuildColumnDiffs(r, true))
+    private void ClearResults()
+    {
+        _allColumnRows = [];
+        _allRowRows = [];
+        _allValueRows = [];
+        ClearSearch();
+        ShowRows([], [], []);
+    }
+
+    private void ShowRows(
+        List<SchemaDiffRow> columnRows,
+        List<SchemaDiffRow> rowRows,
+        List<ValueDiffRow> valueRows
+    )
+    {
+        _visibleColumnRows = columnRows;
+        _visibleRowRows = rowRows;
+        _visibleValueRows = valueRows;
+
+        var batch = IsBatchView;
+        ColumnsView = CreateView(columnRows, batch ? DiffRowBuilder.Summarize(columnRows) : null);
+        RowsView = CreateView(rowRows, batch ? DiffRowBuilder.Summarize(rowRows) : null);
+        ValuesView = CreateView(
+            valueRows,
+            batch ? DiffRowBuilder.Summarize(valueRows) : null,
+            nameof(ValueDiffRow.RowLabel)
         );
-        RowsDocument = FormattedTextBuilder.MergeDocuments(
-            rowResults.Select(r => FormattedTextBuilder.BuildRowDiffs(r, true))
+        ColumnsHasContent = columnRows.Count > 0;
+        RowsHasContent = rowRows.Count > 0;
+        ValuesHasContent = valueRows.Count > 0;
+    }
+
+    private static DataGridCollectionView CreateView<T>(
+        List<T> rows,
+        IReadOnlyDictionary<string, FileSummary>? fileSummaries,
+        string? subGroupPath = null
+    )
+    {
+        // Without isDataInGroupOrder each row searches all existing groups, which takes 10s+
+        // for the Values panel's thousands of row groups. That mode splits groups once a column
+        // sort reorders rows, so the Values grid (the only one with row groups) can't sort.
+        var view = new DataGridCollectionView(
+            rows,
+            isDataSorted: false,
+            isDataInGroupOrder: subGroupPath is not null
         );
-        var onlyNew = ShowOnlyNewRows;
-        ValuesDocument = FormattedTextBuilder.MergeDocuments(
-            valResults.Select(r => FormattedTextBuilder.BuildValueDiffs(r, true, onlyNew))
-        );
-        UpdateStats(_batchResults);
+        using (view.DeferRefresh())
+        {
+            if (fileSummaries is not null)
+                view.GroupDescriptions.Add(new FileGroupDescription(fileSummaries));
+            if (subGroupPath is not null)
+                view.GroupDescriptions.Add(new DataGridPathGroupDescription(subGroupPath));
+        }
+        // No initial current item, otherwise the grid preselects the first row
+        view.MoveCurrentToPosition(-1);
+        return view;
     }
 
     private async Task RunSingleComparisonAsync()
@@ -700,7 +839,6 @@ public partial class MainViewModel : ObservableObject
         IsStatusWarning = false;
         StatusText = "Loading...";
         var includeNew = IncludeNewRows;
-        var onlyNew = ShowOnlyNewRows;
 
         try
         {
@@ -710,10 +848,7 @@ public partial class MainViewModel : ObservableObject
             if (generation != _comparisonGeneration)
                 return;
 
-            ColumnsDocument = FormattedTextBuilder.BuildColumnDiffs(result, false);
-            RowsDocument = FormattedTextBuilder.BuildRowDiffs(result, false);
-            ValuesDocument = FormattedTextBuilder.BuildValueDiffs(result, false, onlyNew);
-            UpdateStats(new[] { result });
+            ShowResults([result], isBatch: false);
 
             SearchText = "";
         }
@@ -787,9 +922,7 @@ public partial class MainViewModel : ObservableObject
         FileList = new ObservableCollection<string>(fileResult.CommonFiles);
         FilesDocument = FormattedTextBuilder.BuildFileDiffs(fileResult);
         SelectedFileIndex = -1;
-        ColumnsDocument = null;
-        RowsDocument = null;
-        ValuesDocument = null;
+        ClearResults();
     }
 
     private async Task SelectCustomFolder(bool isSource)
@@ -877,56 +1010,37 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void DismissUpdate() => PendingUpdate = null;
 
-    [RelayCommand(CanExecute = nameof(HasColumnsContent))]
+    [RelayCommand(CanExecute = nameof(ColumnsHasContent))]
     private Task SaveColumnsAsText() =>
-        SaveDocumentAsText(ColumnsDocument, "Columns.Altered", "Columns Altered");
+        SaveLinesAsText(
+            DiffRowTextFormatter.FormatSchemaRows(_visibleColumnRows, "Col", IsBatchView),
+            "Columns.Altered",
+            "Columns Altered"
+        );
 
-    private bool HasColumnsContent() => ColumnsDocument is { Lines.Count: > 0 };
-
-    public bool ColumnsHasContent => HasColumnsContent();
-
-    [RelayCommand(CanExecute = nameof(HasRowsContent))]
+    [RelayCommand(CanExecute = nameof(RowsHasContent))]
     private Task SaveRowsAsText() =>
-        SaveDocumentAsText(RowsDocument, "Rows.Altered", "Rows Altered");
+        SaveLinesAsText(
+            DiffRowTextFormatter.FormatSchemaRows(_visibleRowRows, "Row", IsBatchView),
+            "Rows.Altered",
+            "Rows Altered"
+        );
 
-    private bool HasRowsContent() => RowsDocument is { Lines.Count: > 0 };
+    [RelayCommand(CanExecute = nameof(ValuesHasContent))]
+    private Task SaveValuesAsText() =>
+        SaveLinesAsText(
+            DiffRowTextFormatter.FormatValueRows(_visibleValueRows, IsBatchView),
+            "Values",
+            "Values"
+        );
 
-    public bool RowsHasContent => HasRowsContent();
-
-    [RelayCommand(CanExecute = nameof(HasValuesContent))]
-    private Task SaveValuesAsText() => SaveDocumentAsText(ValuesDocument, "Values", "Values");
-
-    private bool HasValuesContent() => ValuesDocument is { Lines.Count: > 0 };
-
-    public bool ValuesHasContent => HasValuesContent();
-
-    partial void OnColumnsDocumentChanged(FormattedDocument? value)
-    {
-        SaveColumnsAsTextCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ColumnsHasContent));
-    }
-
-    partial void OnRowsDocumentChanged(FormattedDocument? value)
-    {
-        SaveRowsAsTextCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(RowsHasContent));
-    }
-
-    partial void OnValuesDocumentChanged(FormattedDocument? value)
-    {
-        SaveValuesAsTextCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ValuesHasContent));
-    }
-
-    private async Task SaveDocumentAsText(
-        FormattedDocument? document,
+    // Writes what the panel currently shows, so an active search filter is exported as-is
+    private async Task SaveLinesAsText(
+        IEnumerable<string> lines,
         string panelSuffix,
         string panelName
     )
     {
-        if (document is null || document.Lines.Count == 0)
-            return;
-
         bool isDisplayAll = _batchResults.Count > 0 && SelectedFileIndex < 0;
         string prefix;
         if (isDisplayAll)
@@ -961,13 +1075,14 @@ public partial class MainViewModel : ObservableObject
         var headerLines = new List<string> { $"Source:   {sourceName}", $"Target:   {targetName}" };
         headerLines.Add($"File:     {(isDisplayAll ? "All Files" : $"{prefix}.txt")}");
         headerLines.Add($"Summary:  {panelName}");
+        if (IsSearchFiltered)
+            headerLines.Add($"Search:   {_activeSearchTerm}");
         headerLines.Add(new string('-', 40));
         headerLines.Add("");
 
-        var content = document.Lines.Select(l => string.Concat(l.Spans.Select(s => s.Text)));
         try
         {
-            await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(content));
+            await File.WriteAllLinesAsync(file.Path.LocalPath, headerLines.Concat(lines));
             IsStatusWarning = false;
             StatusText = $"Saved {Path.GetFileName(file.Path.LocalPath)}";
         }
