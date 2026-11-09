@@ -45,7 +45,10 @@
           <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush" Color="#BBDCFF" />
           <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush" Color="#BBDCFF" />
           <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush" Color="#BBDCFF" />
-          <SolidColorBrush x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush" Color="#BBDCFF" />
+          <SolidColorBrush
+            x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush"
+            Color="#BBDCFF"
+          />
           <!--  Muted focus outline on the current cell  -->
           <SolidColorBrush x:Key="DataGridCellFocusVisualPrimaryBrush" Color="#8C959F" />
           <SolidColorBrush x:Key="DataGridCellFocusVisualSecondaryBrush" Color="Transparent" />

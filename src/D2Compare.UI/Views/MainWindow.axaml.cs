@@ -2,6 +2,9 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using D2Compare.Core.Models;
@@ -18,6 +21,7 @@ public partial class MainWindow : Window
         Closing += OnClosing;
 
         foreach (var grid in new[] { ColumnsGrid, RowsGrid, ValuesGrid })
+        {
             grid.PropertyChanged += (_, e) =>
             {
                 if (e.Property == DataGrid.ItemsSourceProperty)
@@ -26,6 +30,12 @@ public partial class MainWindow : Window
                     ApplyCollapsedOnLoad(grid);
                 }
             };
+            grid.AddHandler(
+                PointerPressedEvent,
+                OnGroupHeaderPointerPressed,
+                RoutingStrategies.Tunnel
+            );
+        }
 
         DataContextChanged += (_, _) =>
         {
@@ -113,6 +123,30 @@ public partial class MainWindow : Window
             else
                 grid.ExpandRowGroup(group, expandAllSubgroups: false);
         }
+    }
+
+    // Group headers toggle on a single click instead of the grid's double click. Runs on
+    // tunnel and marks the event handled, so the header's own double-click toggle never fires.
+    private static void OnGroupHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (
+            e.Source is not Visual source
+            || !e.GetCurrentPoint(source).Properties.IsLeftButtonPressed
+            || source.FindAncestorOfType<DataGridRowGroupHeader>(includeSelf: true)
+                is not { } header
+        )
+            return;
+
+        var expander = header
+            .GetVisualDescendants()
+            .OfType<ToggleButton>()
+            .FirstOrDefault(b => b.Name == "PART_ExpanderButton");
+        // A click on the expander arrow already toggles through the button itself
+        if (expander is null || expander == source || expander.IsVisualAncestorOf(source))
+            return;
+
+        expander.IsChecked = expander.IsChecked != true;
+        e.Handled = true;
     }
 
     // Auto widths only grow and scroll offsets survive an ItemsSource swap, so a new
