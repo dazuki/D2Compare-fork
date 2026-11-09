@@ -42,8 +42,8 @@ public class AppSettings
     public string? CustomSourcePath { get; set; }
     public string? CustomTargetPath { get; set; }
 
-    public double WindowWidth { get; set; } = 1280;
-    public double WindowHeight { get; set; } = 720;
+    public double WindowWidth { get; set; } = 1536;
+    public double WindowHeight { get; set; } = 864;
     public bool IsMaximized { get; set; }
     public double Column0Star { get; set; } = 1.0;
     public double Column2Star { get; set; } = 1.0;
