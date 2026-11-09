@@ -102,17 +102,34 @@ public class FormattedTextPresenter : UserControl
     private void Redraw()
     {
         var isDark = ActualThemeVariant == ThemeVariant.Dark;
-        _colorizer.IsDark = isDark;
+        _colorizer.Resolve = ResolveBrush;
         _highlighter.IsDark = isDark;
-        _editor.Foreground = Palette.Resolve(SpanColor.Default, isDark);
+        _editor.Foreground = ResolveBrush(SpanColor.Default);
         _editor.TextArea.TextView.Redraw();
+    }
+
+    // Same theme brushes as the grids (App.axaml), so both panels share one palette
+    private IBrush ResolveBrush(SpanColor color)
+    {
+        var key = color switch
+        {
+            SpanColor.Header => "StatChangedBrush",
+            SpanColor.Added => "StatAddedBrush",
+            SpanColor.Removed => "StatRemovedBrush",
+            SpanColor.FileName => "FileNameBrush",
+            SpanColor.FileNameMuted => "MutedBrush",
+            _ => "TextControlForeground",
+        };
+        return this.TryFindResource(key, ActualThemeVariant, out var value) && value is IBrush brush
+            ? brush
+            : Brushes.Gray;
     }
 
     // Applies span colors/weights; line N of the editor maps to FormattedDocument line N
     private sealed class SpanColorizer : DocumentColorizingTransformer
     {
         public IReadOnlyList<FormattedLine> Lines { get; set; } = [];
-        public bool IsDark { get; set; }
+        public Func<SpanColor, IBrush> Resolve { get; set; } = _ => Brushes.Gray;
 
         protected override void ColorizeLine(DocumentLine line)
         {
@@ -126,7 +143,7 @@ public class FormattedTextPresenter : UserControl
                 if (span.Text.Length == 0)
                     continue;
 
-                var brush = Palette.Resolve(span.Color, IsDark);
+                var brush = Resolve(span.Color);
                 var bold = span.Style == SpanStyle.Bold;
                 var isFileName = span.Color is SpanColor.FileName or SpanColor.FileNameMuted;
 
@@ -139,7 +156,7 @@ public class FormattedTextPresenter : UserControl
                         props.SetForegroundBrush(brush);
                         if (bold)
                             props.SetTypeface(
-                                new Typeface(props.Typeface.FontFamily, weight: FontWeight.Bold)
+                                new Typeface(props.Typeface.FontFamily, weight: FontWeight.SemiBold)
                             );
                         if (isFileName)
                             props.SetFontRenderingEmSize(15);
@@ -162,7 +179,7 @@ public class FormattedTextPresenter : UserControl
                 return;
 
             var text = CurrentContext.Document.GetText(line);
-            var background = IsDark ? Palette.HighlightDark : Palette.HighlightLight;
+            var background = IsDark ? HighlightDark : HighlightLight;
             var index = text.IndexOf(Term, StringComparison.OrdinalIgnoreCase);
             while (index >= 0)
             {
@@ -182,32 +199,10 @@ public class FormattedTextPresenter : UserControl
         }
     }
 
-    private static class Palette
-    {
-        private static readonly IBrush s_headerLight = Brush(25, 25, 112);
-        private static readonly IBrush s_headerDark = Brush(65, 105, 225);
-        private static readonly IBrush s_addedDark = Brush(80, 200, 120);
-        private static readonly IBrush s_removedDark = Brush(255, 100, 100);
-        private static readonly IBrush s_fileNameLight = Brush(255, 140, 0);
-        private static readonly IBrush s_fileNameDark = Brush(255, 180, 70);
-        private static readonly IBrush s_fileNameMuted = Brush(150, 150, 150);
-        private static readonly IBrush s_defaultDark = Brush(220, 220, 220);
-
-        public static readonly IBrush HighlightLight = Brushes.Yellow;
-        public static readonly IBrush HighlightDark = Brush(80, 80, 0);
-
-        public static IBrush Resolve(SpanColor color, bool isDark) =>
-            color switch
-            {
-                SpanColor.Header => isDark ? s_headerDark : s_headerLight,
-                SpanColor.Added => isDark ? s_addedDark : Brushes.Green,
-                SpanColor.Removed => isDark ? s_removedDark : Brushes.Red,
-                SpanColor.FileName => isDark ? s_fileNameDark : s_fileNameLight,
-                SpanColor.FileNameMuted => s_fileNameMuted,
-                _ => isDark ? s_defaultDark : Brushes.Black,
-            };
-
-        private static IBrush Brush(byte r, byte g, byte b) =>
-            new ImmutableSolidColorBrush(Color.FromRgb(r, g, b));
-    }
+    private static readonly IBrush HighlightLight = new ImmutableSolidColorBrush(
+        Color.FromRgb(0xFF, 0xF1, 0xA8)
+    );
+    private static readonly IBrush HighlightDark = new ImmutableSolidColorBrush(
+        Color.FromRgb(0x5C, 0x4A, 0x12)
+    );
 }

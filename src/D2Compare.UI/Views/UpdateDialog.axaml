@@ -34,7 +34,7 @@
       Margin="0,8,0,0"
       Padding="8"
       Background="{DynamicResource PanelBackgroundBrush}"
-      BorderBrush="Gray"
+      BorderBrush="{DynamicResource PanelBorderBrush}"
       BorderThickness="1"
     >
       <md:MarkdownScrollViewer x:Name="ChangelogViewer" Markdown="">

@@ -18,24 +18,62 @@
           <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3" />
           <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FFFFFF" />
           <SolidColorBrush x:Key="WarningBrush" Color="#B8860B" />
-          <SolidColorBrush x:Key="StatAddedBrush" Color="Green" />
-          <SolidColorBrush x:Key="StatRemovedBrush" Color="Red" />
-          <SolidColorBrush x:Key="StatChangedBrush" Color="#191970" />
+          <SolidColorBrush x:Key="StatAddedBrush" Color="#1A7F37" />
+          <SolidColorBrush x:Key="StatRemovedBrush" Color="#CF222E" />
+          <SolidColorBrush x:Key="StatChangedBrush" Color="#0969DA" />
           <SolidColorBrush x:Key="FrozenColumnBrush" Color="#E8E8E8" />
           <SolidColorBrush x:Key="LinkBrush" Color="#1a6db5" />
           <SolidColorBrush x:Key="LinkHoverBrush" Color="#1a8fe6" />
+          <SolidColorBrush x:Key="FileNameBrush" Color="#9A6700" />
+          <SolidColorBrush x:Key="MutedBrush" Color="#6E7781" />
+          <SolidColorBrush x:Key="DataGridSearchMatchBrush" Color="#FFF1A8" />
+          <SolidColorBrush x:Key="DataGridSearchMatchForegroundBrush" Color="#1F2328" />
+          <!--  Muted borders: panels and inputs; focus keeps the accent  -->
+          <SolidColorBrush x:Key="PanelBorderBrush" Color="#D0D7DE" />
+          <SolidColorBrush x:Key="TextControlBorderBrush" Color="#D0D7DE" />
+          <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#AFB8C1" />
+          <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#D0D7DE" />
+          <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#AFB8C1" />
+          <!--
+            Soft row selection. The grid draws these at 0.6 (0.8 hovered) opacity,
+            so on white they land around #D6EAFF instead of the strong accent blue.
+          -->
+          <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush" Color="#BBDCFF" />
+          <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush" Color="#BBDCFF" />
+          <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush" Color="#BBDCFF" />
+          <SolidColorBrush x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush" Color="#BBDCFF" />
+          <!--  Muted focus outline on the current cell  -->
+          <SolidColorBrush x:Key="DataGridCellFocusVisualPrimaryBrush" Color="#8C959F" />
+          <SolidColorBrush x:Key="DataGridCellFocusVisualSecondaryBrush" Color="Transparent" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="IconForegroundBrush" Color="White" />
-          <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1E1E1E" />
-          <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#121212" />
+          <!--  Panels sit a step above the window so they stand out  -->
+          <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0D1117" />
+          <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#161B22" />
           <SolidColorBrush x:Key="WarningBrush" Color="#FFA500" />
-          <SolidColorBrush x:Key="StatAddedBrush" Color="#50C878" />
-          <SolidColorBrush x:Key="StatRemovedBrush" Color="#FF6464" />
-          <SolidColorBrush x:Key="StatChangedBrush" Color="#4169E1" />
+          <SolidColorBrush x:Key="StatAddedBrush" Color="#3FB950" />
+          <SolidColorBrush x:Key="StatRemovedBrush" Color="#F85149" />
+          <SolidColorBrush x:Key="StatChangedBrush" Color="#58A6FF" />
           <SolidColorBrush x:Key="FrozenColumnBrush" Color="#2A2A2A" />
           <SolidColorBrush x:Key="LinkBrush" Color="#5aafff" />
           <SolidColorBrush x:Key="LinkHoverBrush" Color="#8acbff" />
+          <SolidColorBrush x:Key="FileNameBrush" Color="#D29922" />
+          <SolidColorBrush x:Key="MutedBrush" Color="#8B949E" />
+          <SolidColorBrush x:Key="DataGridSearchMatchBrush" Color="#5C4A12" />
+          <SolidColorBrush x:Key="DataGridSearchMatchForegroundBrush" Color="#F0F6FC" />
+          <!--  Muted borders: panels and inputs; focus keeps the accent  -->
+          <SolidColorBrush x:Key="PanelBorderBrush" Color="#3D444D" />
+          <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3D444D" />
+          <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#57606A" />
+          <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3D444D" />
+          <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#57606A" />
+          <!--  Grid surfaces tinted to match the blue-black panel background  -->
+          <SolidColorBrush x:Key="DataGridRowGroupHeaderBackgroundBrush" Color="#1C2330" />
+          <SolidColorBrush x:Key="DataGridColumnHeaderBackgroundBrush" Color="#161B22" />
+          <!--  Muted focus outline on the current cell  -->
+          <SolidColorBrush x:Key="DataGridCellFocusVisualPrimaryBrush" Color="#6E7681" />
+          <SolidColorBrush x:Key="DataGridCellFocusVisualSecondaryBrush" Color="Transparent" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
       <controls:IntToBoolConverter x:Key="IntToBool" />
