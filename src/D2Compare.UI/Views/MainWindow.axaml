@@ -248,6 +248,11 @@
       <Setter Property="IsPropertyNameVisible" Value="False" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <!--  Panel header toggle: chevrons point to what a click does  -->
+    <Style Selector="ToggleButton.collapse">
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -640,7 +645,13 @@
       RowDefinitions="Auto,*"
     >
       <!--  Column Headers  -->
-      <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,0,4" ColumnDefinitions="*,Auto">
+      <Grid
+        Grid.Row="0"
+        Grid.Column="0"
+        Margin="0,0,0,4"
+        ColumnDefinitions="*,Auto,Auto"
+        ColumnSpacing="4"
+      >
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
           <ti:TablerIcon
             Width="18"
@@ -674,8 +685,44 @@
             />
           </StackPanel>
         </StackPanel>
-        <Button
+        <ToggleButton
           Grid.Column="1"
+          Classes="collapse"
+          IsChecked="{Binding ColumnsCollapsed}"
+          IsVisible="{Binding IsBatchView}"
+          ToolTip.Tip="{Binding CollapseToolTip}"
+        >
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Panel>
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsDown"
+                IsVisible="{Binding ColumnsCollapsed}"
+                StrokeWidth="2"
+              />
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsUp"
+                IsVisible="{Binding !ColumnsCollapsed}"
+                StrokeWidth="2"
+              />
+            </Panel>
+            <!--  Marks that the collapse state is temporary during a search  -->
+            <TextBlock
+              VerticalAlignment="Center"
+              FontWeight="SemiBold"
+              Foreground="{DynamicResource WarningBrush}"
+              IsVisible="{Binding IsSearchFiltered}"
+              Text="*"
+            />
+          </StackPanel>
+        </ToggleButton>
+        <Button
+          Grid.Column="2"
           Padding="8,4"
           Command="{Binding SaveColumnsAsTextCommand}"
           IsVisible="{Binding ColumnsHasContent}"
@@ -684,7 +731,13 @@
           <TextBlock FontSize="13" Text="Export Summary" />
         </Button>
       </Grid>
-      <Grid Grid.Row="0" Grid.Column="2" Margin="0,0,0,4" ColumnDefinitions="*,Auto">
+      <Grid
+        Grid.Row="0"
+        Grid.Column="2"
+        Margin="0,0,0,4"
+        ColumnDefinitions="*,Auto,Auto"
+        ColumnSpacing="4"
+      >
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
           <ti:TablerIcon
             Width="18"
@@ -718,8 +771,44 @@
             />
           </StackPanel>
         </StackPanel>
-        <Button
+        <ToggleButton
           Grid.Column="1"
+          Classes="collapse"
+          IsChecked="{Binding RowsCollapsed}"
+          IsVisible="{Binding IsBatchView}"
+          ToolTip.Tip="{Binding CollapseToolTip}"
+        >
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Panel>
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsDown"
+                IsVisible="{Binding RowsCollapsed}"
+                StrokeWidth="2"
+              />
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsUp"
+                IsVisible="{Binding !RowsCollapsed}"
+                StrokeWidth="2"
+              />
+            </Panel>
+            <!--  Marks that the collapse state is temporary during a search  -->
+            <TextBlock
+              VerticalAlignment="Center"
+              FontWeight="SemiBold"
+              Foreground="{DynamicResource WarningBrush}"
+              IsVisible="{Binding IsSearchFiltered}"
+              Text="*"
+            />
+          </StackPanel>
+        </ToggleButton>
+        <Button
+          Grid.Column="2"
           Padding="8,4"
           Command="{Binding SaveRowsAsTextCommand}"
           IsVisible="{Binding RowsHasContent}"
@@ -728,7 +817,13 @@
           <TextBlock FontSize="13" Text="Export Summary" />
         </Button>
       </Grid>
-      <Grid Grid.Row="0" Grid.Column="4" Margin="0,0,0,4" ColumnDefinitions="*,Auto">
+      <Grid
+        Grid.Row="0"
+        Grid.Column="4"
+        Margin="0,0,0,4"
+        ColumnDefinitions="*,Auto,Auto"
+        ColumnSpacing="4"
+      >
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
           <ti:TablerIcon
             Width="18"
@@ -755,8 +850,44 @@
             />
           </StackPanel>
         </StackPanel>
-        <Button
+        <ToggleButton
           Grid.Column="1"
+          Classes="collapse"
+          IsChecked="{Binding ValuesCollapsed}"
+          IsVisible="{Binding IsBatchView}"
+          ToolTip.Tip="{Binding CollapseToolTip}"
+        >
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Panel>
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsDown"
+                IsVisible="{Binding ValuesCollapsed}"
+                StrokeWidth="2"
+              />
+              <ti:TablerIcon
+                Width="16"
+                Height="16"
+                Brush="{DynamicResource IconForegroundBrush}"
+                Icon="IconChevronsUp"
+                IsVisible="{Binding !ValuesCollapsed}"
+                StrokeWidth="2"
+              />
+            </Panel>
+            <!--  Marks that the collapse state is temporary during a search  -->
+            <TextBlock
+              VerticalAlignment="Center"
+              FontWeight="SemiBold"
+              Foreground="{DynamicResource WarningBrush}"
+              IsVisible="{Binding IsSearchFiltered}"
+              Text="*"
+            />
+          </StackPanel>
+        </ToggleButton>
+        <Button
+          Grid.Column="2"
           Padding="8,4"
           Command="{Binding SaveValuesAsTextCommand}"
           IsVisible="{Binding ValuesHasContent}"
@@ -955,10 +1086,10 @@
         Grid.Column="0"
         Grid.ColumnSpan="5"
         Background="#80000000"
-        IsVisible="{Binding IsLoading}"
+        IsVisible="{Binding IsBusy}"
       >
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-          <TextBlock HorizontalAlignment="Center" Foreground="White" Text="{Binding StatusText}" />
+          <TextBlock HorizontalAlignment="Center" Foreground="White" Text="{Binding BusyText}" />
         </StackPanel>
       </Border>
     </Grid>

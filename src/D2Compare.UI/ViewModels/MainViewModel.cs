@@ -102,6 +102,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BusyText))]
     private string _statusText = "";
 
     [ObservableProperty]
@@ -114,7 +115,17 @@ public partial class MainViewModel : ObservableObject
     private string _matchLabel = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy), nameof(BusyText))]
     private bool _isLoading;
+
+    // Set by the view while it collapses file groups after new results arrive
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy), nameof(BusyText))]
+    private bool _isCollapsingGroups;
+
+    // Drives the panel overlay, which also covers the collapse that follows a load
+    public bool IsBusy => IsLoading || IsCollapsingGroups;
+    public string BusyText => IsLoading ? StatusText : "Loading...";
 
     [ObservableProperty]
     private DataGridCollectionView? _columnsView;
@@ -142,7 +153,56 @@ public partial class MainViewModel : ObservableObject
 
     // True while a search narrows the grids to matching rows
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CollapseToolTip))]
     private bool _isSearchFiltered;
+
+    public string CollapseToolTip =>
+        IsSearchFiltered
+            ? "Collapse or expand all files\n* Not saved while searching. Your saved setting returns when the search is cleared."
+            : "Collapse or expand all files";
+
+    // Per-panel toggle state; only file groups (batch mode) collapse. Saved to settings
+    // except during a search, which opens every group and must not overwrite the choice.
+    [ObservableProperty]
+    private bool _columnsCollapsed;
+
+    [ObservableProperty]
+    private bool _rowsCollapsed;
+
+    [ObservableProperty]
+    private bool _valuesCollapsed;
+
+    partial void OnColumnsCollapsedChanged(bool value) =>
+        SaveCollapsed(() => _settings.ColumnsCollapsed = value);
+
+    partial void OnRowsCollapsedChanged(bool value) =>
+        SaveCollapsed(() => _settings.RowsCollapsed = value);
+
+    partial void OnValuesCollapsedChanged(bool value) =>
+        SaveCollapsed(() => _settings.ValuesCollapsed = value);
+
+    private void SaveCollapsed(Action apply)
+    {
+        if (IsSearchFiltered)
+            return;
+        apply();
+        _settings.Save();
+    }
+
+    // Toggles follow what a search shows (all open) so one click collapses again
+    private void ShowCollapsedAsExpanded()
+    {
+        ColumnsCollapsed = false;
+        RowsCollapsed = false;
+        ValuesCollapsed = false;
+    }
+
+    private void RestoreCollapsedFromSettings()
+    {
+        ColumnsCollapsed = _settings.ColumnsCollapsed;
+        RowsCollapsed = _settings.RowsCollapsed;
+        ValuesCollapsed = _settings.ValuesCollapsed;
+    }
 
     public HighlightOnlySearchModel ColumnsSearch { get; } = new(SearchHighlightMode.TextAndCell);
     public HighlightOnlySearchModel RowsSearch { get; } = new(SearchHighlightMode.TextAndCell);
@@ -238,6 +298,9 @@ public partial class MainViewModel : ObservableObject
         _settings = AppSettings.Load();
 
         IsDarkMode = _settings.IsDarkMode;
+        ColumnsCollapsed = _settings.ColumnsCollapsed;
+        RowsCollapsed = _settings.RowsCollapsed;
+        ValuesCollapsed = _settings.ValuesCollapsed;
         if (IsDarkMode && Avalonia.Application.Current is { } app)
             app.RequestedThemeVariant = ThemeVariant.Dark;
 
@@ -474,6 +537,7 @@ public partial class MainViewModel : ObservableObject
             _activeSearchTerm = term;
             IsSearchFiltered = true;
             ShowRows(columns, rows, values);
+            ShowCollapsedAsExpanded();
 
             // Highlights the term inside the remaining cells
             var descriptor = new SearchDescriptor(
@@ -503,6 +567,7 @@ public partial class MainViewModel : ObservableObject
         if (IsSearchFiltered)
         {
             IsSearchFiltered = false;
+            RestoreCollapsedFromSettings();
             ShowRows(_allColumnRows, _allRowRows, _allValueRows);
         }
     }
@@ -755,7 +820,11 @@ public partial class MainViewModel : ObservableObject
         foreach (var search in AllSearchModels)
             search.Clear();
         MatchLabel = "";
-        IsSearchFiltered = false;
+        if (IsSearchFiltered)
+        {
+            IsSearchFiltered = false;
+            RestoreCollapsedFromSettings();
+        }
         IsBatchView = isBatch;
         ShowRows(_allColumnRows, _allRowRows, _allValueRows);
         UpdateStats(results);

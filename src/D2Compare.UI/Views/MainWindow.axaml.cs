@@ -1,6 +1,10 @@
+using System.ComponentModel;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using D2Compare.Core.Models;
 using D2Compare.ViewModels;
 
 namespace D2Compare.Views;
@@ -17,8 +21,98 @@ public partial class MainWindow : Window
             grid.PropertyChanged += (_, e) =>
             {
                 if (e.Property == DataGrid.ItemsSourceProperty)
+                {
                     ResetGridLayout(grid);
+                    ApplyCollapsedOnLoad(grid);
+                }
             };
+
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainViewModel vm)
+                vm.PropertyChanged += OnViewModelPropertyChanged;
+        };
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not MainViewModel vm)
+            return;
+
+        switch (e.PropertyName)
+        {
+            case nameof(MainViewModel.ColumnsCollapsed):
+                QueueFileGroupsCollapsed(ColumnsGrid, vm.ColumnsCollapsed);
+                break;
+            case nameof(MainViewModel.RowsCollapsed):
+                QueueFileGroupsCollapsed(RowsGrid, vm.RowsCollapsed);
+                break;
+            case nameof(MainViewModel.ValuesCollapsed):
+                QueueFileGroupsCollapsed(ValuesGrid, vm.ValuesCollapsed);
+                break;
+        }
+    }
+
+    // New results follow the panel's saved toggle; search results always open so matches show
+    private void ApplyCollapsedOnLoad(DataGrid grid)
+    {
+        if (DataContext is not MainViewModel { IsBatchView: true, IsSearchFiltered: false } vm)
+            return;
+
+        var collapsed =
+            grid == ColumnsGrid ? vm.ColumnsCollapsed
+            : grid == RowsGrid ? vm.RowsCollapsed
+            : vm.ValuesCollapsed;
+        if (collapsed)
+            QueueFileGroupsCollapsed(grid, true);
+    }
+
+    private int _pendingCollapses;
+
+    // Collapsing a large panel takes up to ~1.5s, so the loading overlay stays up until it's
+    // done. Background priority runs after layout (the grid builds its group slots there) and
+    // after a render, so the overlay is painted before the UI thread blocks.
+    private void QueueFileGroupsCollapsed(DataGrid grid, bool collapsed)
+    {
+        if (DataContext is not MainViewModel { IsBatchView: true } vm)
+            return;
+
+        var view = grid.ItemsSource;
+        _pendingCollapses++;
+        vm.IsCollapsingGroups = true;
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                try
+                {
+                    if (grid.ItemsSource == view)
+                        SetFileGroupsCollapsed(grid, collapsed);
+                }
+                finally
+                {
+                    if (--_pendingCollapses == 0)
+                        vm.IsCollapsingGroups = false;
+                }
+            },
+            DispatcherPriority.Background
+        );
+    }
+
+    // Top-level groups only: in batch mode those are files, so data-row groups stay open
+    private static void SetFileGroupsCollapsed(DataGrid grid, bool collapsed)
+    {
+        if (grid.ItemsSource is not DataGridCollectionView { Groups: { } groups })
+            return;
+
+        foreach (var group in groups.OfType<DataGridCollectionViewGroup>())
+        {
+            if (group.Key is not FileSummary)
+                return;
+            if (collapsed)
+                grid.CollapseRowGroup(group, collapseAllSubgroups: false);
+            else
+                grid.ExpandRowGroup(group, expandAllSubgroups: false);
+        }
     }
 
     // Auto widths only grow and scroll offsets survive an ItemsSource swap, so a new

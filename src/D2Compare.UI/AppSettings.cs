@@ -49,6 +49,11 @@ public class AppSettings
     public double Column2Star { get; set; } = 1.0;
     public double Column4Star { get; set; } = 1.5;
 
+    // Batch mode file groups start collapsed per panel; true when missing so new users see it
+    public bool ColumnsCollapsed { get; set; } = true;
+    public bool RowsCollapsed { get; set; } = true;
+    public bool ValuesCollapsed { get; set; } = true;
+
     public bool DisableUpdateCheck { get; set; }
 
     // Variable for D2 Horadrim binary path on Unix
