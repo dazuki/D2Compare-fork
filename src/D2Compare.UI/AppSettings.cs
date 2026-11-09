@@ -45,6 +45,10 @@ public class AppSettings
     public double WindowWidth { get; set; } = 1536;
     public double WindowHeight { get; set; } = 864;
     public bool IsMaximized { get; set; }
+
+    // Center point of the screen the window was last on
+    public int? ScreenX { get; set; }
+    public int? ScreenY { get; set; }
     public double Column0Star { get; set; } = 1.0;
     public double Column2Star { get; set; } = 1.0;
     public double Column4Star { get; set; } = 1.5;

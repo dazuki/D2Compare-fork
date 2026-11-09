@@ -39,9 +39,42 @@ public partial class MainWindow : Window
 
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is MainViewModel vm)
-                vm.PropertyChanged += OnViewModelPropertyChanged;
+            if (DataContext is not MainViewModel vm)
+                return;
+            vm.PropertyChanged += OnViewModelPropertyChanged;
+            ApplyWindowSize(vm.Settings);
         };
+    }
+
+    // Runs before show: centers on the screen the window was closed on, or the primary one
+    private void ApplyWindowSize(AppSettings s)
+    {
+        var screen =
+            (
+                s.ScreenX is { } x && s.ScreenY is { } y
+                    ? Screens.ScreenFromPoint(new PixelPoint(x, y))
+                    : null
+            ) ?? Screens.Primary;
+
+        var width = s.WindowWidth;
+        var height = s.WindowHeight;
+        if (screen is null)
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        else
+        {
+            var area = screen.WorkingArea;
+            width = Math.Min(width, area.Width / screen.Scaling);
+            height = Math.Min(height, area.Height / screen.Scaling);
+            Position = new PixelPoint(
+                area.X + (int)((area.Width - width * screen.Scaling) / 2),
+                area.Y + (int)((area.Height - height * screen.Scaling) / 2)
+            );
+        }
+        Width = width;
+        Height = height;
+
+        if (s.IsMaximized)
+            WindowState = WindowState.Maximized;
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -63,7 +96,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // New results follow the panel's saved toggle; search results always open so matches show
+    // Search results stay expanded
     private void ApplyCollapsedOnLoad(DataGrid grid)
     {
         if (DataContext is not MainViewModel { IsBatchView: true, IsSearchFiltered: false } vm)
@@ -79,9 +112,7 @@ public partial class MainWindow : Window
 
     private int _pendingCollapses;
 
-    // Collapsing a large panel takes up to ~1.5s, so the loading overlay stays up until it's
-    // done. Background priority runs after layout (the grid builds its group slots there) and
-    // after a render, so the overlay is painted before the UI thread blocks.
+    // Background priority: runs after layout builds the group slots and after the overlay renders
     private void QueueFileGroupsCollapsed(DataGrid grid, bool collapsed)
     {
         if (DataContext is not MainViewModel { IsBatchView: true } vm)
@@ -108,7 +139,7 @@ public partial class MainWindow : Window
         );
     }
 
-    // Top-level groups only: in batch mode those are files, so data-row groups stay open
+    // File groups only, data-row groups stay open
     private static void SetFileGroupsCollapsed(DataGrid grid, bool collapsed)
     {
         if (grid.ItemsSource is not DataGridCollectionView { Groups: { } groups })
@@ -125,8 +156,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // Group headers toggle on a single click instead of the grid's double click. Runs on
-    // tunnel and marks the event handled, so the header's own double-click toggle never fires.
+    // Tunnel + Handled replaces the header's built-in double-click toggle
     private static void OnGroupHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (
@@ -141,7 +171,6 @@ public partial class MainWindow : Window
             .GetVisualDescendants()
             .OfType<ToggleButton>()
             .FirstOrDefault(b => b.Name == "PART_ExpanderButton");
-        // A click on the expander arrow already toggles through the button itself
         if (expander is null || expander == source || expander.IsVisualAncestorOf(source))
             return;
 
@@ -149,8 +178,7 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // Auto widths only grow and scroll offsets survive an ItemsSource swap, so a new
-    // comparison would otherwise inherit the previous one's layout
+    // Auto widths only grow and scroll offsets survive an ItemsSource swap
     private static void ResetGridLayout(DataGrid grid)
     {
         foreach (var column in grid.Columns)
@@ -167,13 +195,6 @@ public partial class MainWindow : Window
             return;
         var s = vm.Settings;
 
-        Width = s.WindowWidth;
-        Height = s.WindowHeight;
-
-        if (s.IsMaximized)
-            WindowState = WindowState.Maximized;
-
-        // Restore splitter proportions
         var cols = PanelsGrid.ColumnDefinitions;
         cols[0].Width = new GridLength(s.Column0Star, GridUnitType.Star);
         cols[2].Width = new GridLength(s.Column2Star, GridUnitType.Star);
@@ -188,13 +209,19 @@ public partial class MainWindow : Window
 
         s.IsMaximized = WindowState == WindowState.Maximized;
 
+        if (Screens.ScreenFromVisual(this) is { } screen)
+        {
+            var center = screen.Bounds.Center;
+            s.ScreenX = center.X;
+            s.ScreenY = center.Y;
+        }
+
         if (WindowState == WindowState.Normal)
         {
             s.WindowWidth = Width;
             s.WindowHeight = Height;
         }
 
-        // Save splitter proportions
         var cols = PanelsGrid.ColumnDefinitions;
         s.Column0Star = cols[0].Width.Value;
         s.Column2Star = cols[2].Width.Value;
