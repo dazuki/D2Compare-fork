@@ -35,9 +35,18 @@ public class UpdateService
             ? path
             : null;
 
+    // Informational version keeps the "-rc.N" suffix; the SDK appends "+<commit>", which is dropped
+    private static string? InformationalVersion =>
+        Assembly
+            .GetEntryAssembly()
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion.Split('+')[0];
+
     public static string GetCurrentVersion()
     {
-        return Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
+        return InformationalVersion
+            ?? Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)
+            ?? "0.0.0";
     }
 
     // Checks GitHub for a newer release. Returns null if up-to-date or on failure.
@@ -55,10 +64,13 @@ public class UpdateService
                 return null;
 
             var current = Assembly.GetEntryAssembly()?.GetName().Version;
-            if (
-                current is null
-                || latest <= new System.Version(current.Major, current.Minor, current.Build)
-            )
+            if (current is null)
+                return null;
+
+            // A stable release of the same version is newer than its rc builds
+            var currentCore = new System.Version(current.Major, current.Minor, current.Build);
+            bool isPrerelease = InformationalVersion?.Contains('-') == true;
+            if (latest < currentCore || (latest == currentCore && !isPrerelease))
                 return null;
 
             var suffix =
