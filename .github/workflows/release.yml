@@ -3,10 +3,39 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
 
 jobs:
+  # Stable tags must be on main, -rc.N tags on develop
+  channel:
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.check.outputs.prerelease }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check tag branch
+        id: check
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "$TAG" == *-rc.* ]]; then
+            branch=develop prerelease=true
+          else
+            branch=main prerelease=false
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+            echo "::error::$TAG must point to a commit on $branch (push the branch before the tag)"
+            exit 1
+          fi
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: channel
     runs-on: ubuntu-latest
 
     steps:
@@ -81,12 +110,39 @@ jobs:
           path: D2Compare-${{ github.ref_name }}-x86_64.AppImage
 
   release:
-    needs: [build, appimage]
+    needs: [channel, build, appimage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      - uses: actions/checkout@v7
+        if: needs.channel.outputs.prerelease == 'true'
+        with:
+          fetch-depth: 0
+
+      # RC notes: raw commits since the previous rc tag (or last stable tag if none), newest first
+      - name: RC release notes
+        if: needs.channel.outputs.prerelease == 'true'
+        env:
+          TAG: ${{ github.ref_name }}
+          NOTES: ${{ runner.temp }}/rc-notes.md
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*-rc.*' "$TAG^" 2>/dev/null \
+            || git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)
+          range=${prev:+$prev..}$TAG
+          {
+            echo "## Commits"
+            echo
+            git log --pretty='- %h %s' "$range"
+            if [[ -n "$prev" ]]; then
+              echo
+              echo "**Full Changelog**: $REPO_URL/compare/$prev...$TAG"
+            fi
+          } > "$NOTES"
+          cat "$NOTES"
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -95,7 +151,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          generate_release_notes: ${{ needs.channel.outputs.prerelease != 'true' }}
+          body_path: ${{ needs.channel.outputs.prerelease == 'true' && format('{0}/rc-notes.md', runner.temp) || '' }}
+          prerelease: ${{ needs.channel.outputs.prerelease }}
+          make_latest: ${{ needs.channel.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
