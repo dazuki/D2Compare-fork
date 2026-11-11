@@ -8,7 +8,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>none</DebugType>
-    <Version>2.1.2-rc.2</Version>
+    <Version>2.1.2-rc.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,4 +33,14 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
+
+  <!-- SkiaSharp/HarfBuzzSharp native packages ship .pdb files that DebugType=none doesn't cover -->
+  <Target Name="RemovePublishPdbs" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="'%(Extension)' == '.pdb'"
+      />
+    </ItemGroup>
+  </Target>
 </Project>
