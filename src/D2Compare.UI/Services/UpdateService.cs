@@ -257,7 +257,7 @@ public class UpdateService
         return psi;
     }
 
-    // Settings live next to the exe on Windows; never let an archive overwrite them
+    // Settings lived next to the exe on Windows before 2.1.2; never let an archive overwrite them
     private const string WindowsScript = """
         param([int]$TargetPid, [string]$InstallDir, [string]$StagingDir, [string]$WorkDir, [string]$ExePath)
         while (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }

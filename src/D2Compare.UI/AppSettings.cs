@@ -8,16 +8,26 @@ namespace D2Compare;
 
 public class AppSettings
 {
-    private static readonly string s_configPath = RuntimeInformation.IsOSPlatform(
-        OSPlatform.Windows
-    )
-        ? Path.Combine(AppContext.BaseDirectory, "D2Compare.settings.json")
-        : Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".config",
-            "D2Compare",
-            "settings.json"
-        );
+    private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+    // Windows: %LOCALAPPDATA%\D2Compare. Linux: $XDG_CONFIG_HOME/D2Compare, default ~/.config.
+    // DoNotVerify, otherwise a missing folder returns an empty path
+    private static readonly string s_configPath = Path.Combine(
+        Environment.GetFolderPath(
+            s_isWindows
+                ? Environment.SpecialFolder.LocalApplicationData
+                : Environment.SpecialFolder.ApplicationData,
+            Environment.SpecialFolderOption.DoNotVerify
+        ),
+        "D2Compare",
+        "settings.json"
+    );
+
+    // Windows versions before 2.1.2 kept settings next to the exe
+    private static readonly string s_legacyPath = Path.Combine(
+        AppContext.BaseDirectory,
+        "D2Compare.settings.json"
+    );
 
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
@@ -65,6 +75,9 @@ public class AppSettings
 
     public static AppSettings Load()
     {
+        if (s_isWindows)
+            MigrateLegacyFile(s_legacyPath, s_configPath);
+
         try
         {
             if (File.Exists(s_configPath))
@@ -79,6 +92,33 @@ public class AppSettings
         catch { }
 
         return new();
+    }
+
+    // Moves the old settings file to the new location and leaves a ".old" note in its place.
+    // Runs on every launch, so it also covers manual installs over an old version.
+    // An existing new file wins; the old one is still retired.
+    internal static void MigrateLegacyFile(string legacyPath, string configPath)
+    {
+        if (!File.Exists(legacyPath))
+            return;
+
+        try
+        {
+            var legacyJson = File.ReadAllText(legacyPath);
+            if (!File.Exists(configPath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+                File.WriteAllText(configPath, legacyJson);
+            }
+
+            var note =
+                $"D2Compare settings have moved to:\r\n{configPath}\r\n\r\n"
+                + "This file is no longer used and can be deleted. Old settings below.\r\n\r\n";
+            File.WriteAllText(Path.ChangeExtension(legacyPath, ".old"), note + legacyJson);
+            File.Delete(legacyPath);
+        }
+        // e.g. read-only install folder: keep the old file and retry next launch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     private void MigrateLegacyIndices()
