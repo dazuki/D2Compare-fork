@@ -403,6 +403,10 @@ indent_style = space
 indent_size = 4
 max_line_length = 100
 
+# Analyzer rules that depend on CSharpier's line wrapping
+# RCS1001: add braces when the body spans multiple lines
+dotnet_diagnostic.RCS1001.severity = none
+
 [*.{config,csproj,props,slnx,targets,xaml,xml}]
 indent_style = space
 indent_size = 2
