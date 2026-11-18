@@ -18,7 +18,7 @@ public class DiffRowTextFormatterTests
 
         Assert.That(
             lines,
-            Is.EqualTo(new[] { "Added (Col 5): reqdex", "Changed (Col 2): HraltiMin -> HratliMin" })
+            Is.EqualTo(["Added (Col 5): reqdex", "Changed (Col 2): HraltiMin -> HratliMin"])
         );
     }
 
@@ -33,10 +33,7 @@ public class DiffRowTextFormatterTests
 
         var lines = DiffRowTextFormatter.FormatSchemaRows(rows, "Row", isBatchMode: true);
 
-        Assert.That(
-            lines,
-            Is.EqualTo(new[] { "Armor.txt", " Removed (Row 3): oldcol", "Misc.txt" })
-        );
+        Assert.That(lines, Is.EqualTo(["Armor.txt", " Removed (Row 3): oldcol", "Misc.txt"]));
     }
 
     [Test]
@@ -52,17 +49,14 @@ public class DiffRowTextFormatterTests
 
         Assert.That(
             lines,
-            Is.EqualTo(
-                new[]
-                {
-                    "Row 3 - Cap",
-                    " lvl: '1' -> '2'",
-                    "",
-                    "Added: Row 9 - Helm",
-                    " lvl: '5'",
-                    "",
-                }
-            )
+            Is.EqualTo([
+                "Row 3 - Cap",
+                " lvl: '1' -> '2'",
+                "",
+                "Added: Row 9 - Helm",
+                " lvl: '5'",
+                "",
+            ])
         );
     }
 }

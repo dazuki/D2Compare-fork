@@ -412,3 +412,7 @@ indent_style = space
 indent_size = 2
 max_line_length = 100
 
+[tests/**.cs]
+# CA1861: constant array arguments; inline expected values read better in tests
+dotnet_diagnostic.CA1861.severity = none
+
