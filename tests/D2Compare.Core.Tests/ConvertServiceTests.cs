@@ -6,7 +6,6 @@ namespace D2Compare.Core.Tests;
 public class ConvertServiceTests
 {
     private TestFiles _files = null!;
-    private static readonly string[] expected = new[] { "knock" };
 
     [SetUp]
     public void SetUp() => _files = new TestFiles();
@@ -77,10 +76,10 @@ public class ConvertServiceTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(output["prop5"], Is.EqualTo(expected));
-            Assert.That(output["par5"], Is.EqualTo(new[] { "" }));
-            Assert.That(output["min5"], Is.EqualTo(new[] { "1" }));
-            Assert.That(output["newcol"], Is.EqualTo(new[] { "x" }));
+            Assert.That(output["prop5"], Is.EqualTo(["knock"]));
+            Assert.That(output["par5"], Is.EqualTo([""]));
+            Assert.That(output["min5"], Is.EqualTo(["1"]));
+            Assert.That(output["newcol"], Is.EqualTo(["x"]));
         }
     }
 
@@ -101,7 +100,7 @@ public class ConvertServiceTests
             RowConversionMode.None
         );
 
-        Assert.That(output["lvl"], Is.EqualTo(new[] { "1", "2" }));
+        Assert.That(output["lvl"], Is.EqualTo(["1", "2"]));
     }
 
     [Test]
@@ -121,9 +120,9 @@ public class ConvertServiceTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(output.Keys, Is.EqualTo(new[] { "name", "HratliMin", "newcol" }));
-            Assert.That(output["HratliMin"], Is.EqualTo(new[] { "7" }));
-            Assert.That(output["newcol"], Is.EqualTo(new[] { "x" }));
+            Assert.That(output.Keys, Is.EqualTo(["name", "HratliMin", "newcol"]));
+            Assert.That(output["HratliMin"], Is.EqualTo(["7"]));
+            Assert.That(output["newcol"], Is.EqualTo(["x"]));
         }
     }
 
@@ -145,8 +144,8 @@ public class ConvertServiceTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(output["name"], Is.EqualTo(new[] { "a", "b" }));
-            Assert.That(output["v"], Is.EqualTo(new[] { "1", "2" }));
+            Assert.That(output["name"], Is.EqualTo(["a", "b"]));
+            Assert.That(output["v"], Is.EqualTo(["1", "2"]));
         }
     }
 
@@ -169,8 +168,8 @@ public class ConvertServiceTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(output["name"], Is.EqualTo(new[] { "b", "a", "old" }));
-            Assert.That(output["v"], Is.EqualTo(new[] { "2", "1", "3" }));
+            Assert.That(output["name"], Is.EqualTo(["b", "a", "old"]));
+            Assert.That(output["v"], Is.EqualTo(["2", "1", "3"]));
         }
     }
 
@@ -194,8 +193,8 @@ public class ConvertServiceTests
         using (Assert.EnterMultipleScope())
         {
             // One row, not the target row plus the source row appended again
-            Assert.That(output["description"], Is.EqualTo(new[] { "2 arrows -> bolts" }));
-            Assert.That(output["v"], Is.EqualTo(new[] { "1" }));
+            Assert.That(output["description"], Is.EqualTo(["2 arrows -> bolts"]));
+            Assert.That(output["v"], Is.EqualTo(["1"]));
         }
     }
 }

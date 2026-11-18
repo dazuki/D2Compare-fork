@@ -19,14 +19,11 @@ public class DiffRowBuilderTests
 
         Assert.That(
             rows,
-            Is.EqualTo(
-                new[]
-                {
-                    new SchemaDiffRow("Armor.txt", ChangeKind.Added, 5, "", "reqdex"),
-                    new SchemaDiffRow("Armor.txt", ChangeKind.Removed, 8, "oldcol", ""),
-                    new SchemaDiffRow("Armor.txt", ChangeKind.Changed, 2, "HraltiMin", "HratliMin"),
-                }
-            )
+            Is.EqualTo([
+                new SchemaDiffRow("Armor.txt", ChangeKind.Added, 5, "", "reqdex"),
+                new SchemaDiffRow("Armor.txt", ChangeKind.Removed, 8, "oldcol", ""),
+                new SchemaDiffRow("Armor.txt", ChangeKind.Changed, 2, "HraltiMin", "HratliMin"),
+            ])
         );
     }
 
@@ -43,9 +40,7 @@ public class DiffRowBuilderTests
             );
             Assert.That(
                 DiffRowBuilder.BuildRowRows([unchanged], includeUnchanged: true),
-                Is.EqualTo(
-                    new[] { new SchemaDiffRow("Misc.txt", ChangeKind.Unchanged, null, "", "") }
-                )
+                Is.EqualTo([new SchemaDiffRow("Misc.txt", ChangeKind.Unchanged, null, "", "")])
             );
         }
     }
@@ -66,17 +61,12 @@ public class DiffRowBuilderTests
 
         Assert.That(
             rows,
-            Is.EqualTo(
-                new[]
-                {
-                    new ValueDiffRow("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
-                    new ValueDiffRow("Armor.txt", "Row 9 - Helm", true, "lvl", "", "5"),
-                }
-            )
+            Is.EqualTo([
+                new ValueDiffRow("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
+                new ValueDiffRow("Armor.txt", "Row 9 - Helm", true, "lvl", "", "5"),
+            ])
         );
     }
-
-    private static readonly string[] expected = new[] { "Added: Row 9 - Helm" };
 
     [Test]
     public void BuildValueRows_KeepsOnlyNewRows_WhenShowOnlyNew()
@@ -92,7 +82,7 @@ public class DiffRowBuilderTests
 
         var rows = DiffRowBuilder.BuildValueRows([result], showOnlyNew: true);
 
-        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(expected));
+        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(["Added: Row 9 - Helm"]));
     }
 
     [Test]

@@ -22,8 +22,8 @@ public class CsvParserTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Keys, Is.EqualTo(new[] { "name", "code", "code (2)" }));
-            Assert.That(data["code (2)"], Is.EqualTo(new[] { "2" }));
+            Assert.That(data.Keys, Is.EqualTo(["name", "code", "code (2)"]));
+            Assert.That(data["code (2)"], Is.EqualTo(["2"]));
         }
     }
 
@@ -34,7 +34,7 @@ public class CsvParserTests
 
         var data = CsvParser.Parse(path);
 
-        Assert.That(data["b"], Is.EqualTo(new[] { "" }));
+        Assert.That(data["b"], Is.EqualTo([""]));
     }
 
     [Test]
@@ -69,7 +69,7 @@ public class CsvParserTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Keys, Is.EqualTo(new[] { "name" }));
+            Assert.That(data.Keys, Is.EqualTo(["name"]));
             Assert.That(encoding, Is.InstanceOf<UTF8Encoding>());
         }
     }

@@ -6,7 +6,6 @@ namespace D2Compare.Core.Tests;
 public class CompareServiceTests
 {
     private TestFiles _files = null!;
-    private static readonly int[] expected = new[] { 1, 2, 3 };
 
     [SetUp]
     public void SetUp() => _files = new TestFiles();
@@ -64,14 +63,11 @@ public class CompareServiceTests
         {
             Assert.That(
                 pairs,
-                Is.EqualTo(
-                    new[]
-                    {
-                        ("HraltiMin", "HratliMin"),
-                        ("HraltiMax", "HratliMax"),
-                        ("HraltiMagicMin", "HratliMagicMin"),
-                    }
-                )
+                Is.EqualTo([
+                    ("HraltiMin", "HratliMin"),
+                    ("HraltiMax", "HratliMax"),
+                    ("HraltiMagicMin", "HratliMagicMin"),
+                ])
             );
             Assert.That(result.AddedColumns, Is.Empty);
             Assert.That(result.RemovedColumns, Is.Empty);
@@ -169,7 +165,7 @@ public class CompareServiceTests
             ]
         );
 
-        Assert.That(result.GroupedDifferences.Select(g => g.Row), Is.EqualTo(expected));
+        Assert.That(result.GroupedDifferences.Select(g => g.Row), Is.EqualTo([1, 2, 3]));
     }
 
     [Test]
@@ -205,6 +201,6 @@ public class CompareServiceTests
 
         var results = CompareService.CompareFolder(_files.Dir("src"), _files.Dir("tgt"), false);
 
-        Assert.That(results.Select(r => r.FileName), Is.EqualTo(new[] { "Armor.txt" }));
+        Assert.That(results.Select(r => r.FileName), Is.EqualTo(["Armor.txt"]));
     }
 }
