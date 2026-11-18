@@ -6,6 +6,7 @@ namespace D2Compare.Core.Tests;
 public class CompareServiceTests
 {
     private TestFiles _files = null!;
+    private static readonly int[] expected = new[] { 1, 2, 3 };
 
     [SetUp]
     public void SetUp() => _files = new TestFiles();
@@ -36,9 +37,12 @@ public class CompareServiceTests
 
         var result = Compare(rows, rows, includeNewRows: true);
 
-        Assert.That(result.HasColumnChanges, Is.False);
-        Assert.That(result.HasRowChanges, Is.False);
-        Assert.That(result.GroupedDifferences, Is.Empty);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.HasColumnChanges, Is.False);
+            Assert.That(result.HasRowChanges, Is.False);
+            Assert.That(result.GroupedDifferences, Is.Empty);
+        }
     }
 
     [Test]
@@ -56,19 +60,22 @@ public class CompareServiceTests
         );
 
         var pairs = result.ChangedColumns.Select(r => (r.Old.Name, r.New.Name));
-        Assert.That(
-            pairs,
-            Is.EqualTo(
-                new[]
-                {
-                    ("HraltiMin", "HratliMin"),
-                    ("HraltiMax", "HratliMax"),
-                    ("HraltiMagicMin", "HratliMagicMin"),
-                }
-            )
-        );
-        Assert.That(result.AddedColumns, Is.Empty);
-        Assert.That(result.RemovedColumns, Is.Empty);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(
+                pairs,
+                Is.EqualTo(
+                    new[]
+                    {
+                        ("HraltiMin", "HratliMin"),
+                        ("HraltiMax", "HratliMax"),
+                        ("HraltiMagicMin", "HratliMagicMin"),
+                    }
+                )
+            );
+            Assert.That(result.AddedColumns, Is.Empty);
+            Assert.That(result.RemovedColumns, Is.Empty);
+        }
     }
 
     [Test]
@@ -85,9 +92,12 @@ public class CompareServiceTests
             ]
         );
 
-        Assert.That(result.ChangedColumns, Is.Empty);
-        Assert.That(result.RemovedColumns.Single(), Is.EqualTo(new IndexedName(1, "strsing")));
-        Assert.That(result.AddedColumns.Single(), Is.EqualTo(new IndexedName(1, "element")));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.ChangedColumns, Is.Empty);
+            Assert.That(result.RemovedColumns.Single(), Is.EqualTo(new IndexedName(1, "strsing")));
+            Assert.That(result.AddedColumns.Single(), Is.EqualTo(new IndexedName(1, "element")));
+        }
     }
 
     [Test]
@@ -110,8 +120,11 @@ public class CompareServiceTests
 
         Assert.That(result.AddedRows.Single(), Is.EqualTo(new IndexedName(2, "Rogue")));
         var changed = result.GroupedDifferences.Single(g => !g.IsNew);
-        Assert.That(changed.Row, Is.EqualTo(2));
-        Assert.That(changed.Changes.Single(), Is.EqualTo(new ValueChange("lvl", "2", "5")));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(changed.Row, Is.EqualTo(2));
+            Assert.That(changed.Changes.Single(), Is.EqualTo(new ValueChange("lvl", "2", "5")));
+        }
         var added = result.GroupedDifferences.Single(g => g.IsNew);
         Assert.That(added.Changes, Does.Contain(new ValueChange("lvl", null, "9")));
     }
@@ -131,8 +144,11 @@ public class CompareServiceTests
             ]
         );
 
-        Assert.That(result.AddedRows, Has.Count.EqualTo(1));
-        Assert.That(result.GroupedDifferences, Is.Empty);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.AddedRows, Has.Count.EqualTo(1));
+            Assert.That(result.GroupedDifferences, Is.Empty);
+        }
     }
 
     [Test]
@@ -153,7 +169,7 @@ public class CompareServiceTests
             ]
         );
 
-        Assert.That(result.GroupedDifferences.Select(g => g.Row), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(result.GroupedDifferences.Select(g => g.Row), Is.EqualTo(expected));
     }
 
     [Test]
@@ -167,14 +183,17 @@ public class CompareServiceTests
 
         var oldNames = result.ChangedColumns.Select(r => r.Old.Name).ToList();
         var newNames = result.ChangedColumns.Select(r => r.New.Name).ToList();
-        Assert.That(oldNames, Is.Unique);
-        Assert.That(newNames, Is.Unique);
-        Assert.That(
-            result.ChangedColumns.Select(r => (r.Old.Name, r.New.Name)),
-            Does.Contain(("HraltiMagicMax", "HratliMagicMax"))
-                .And.Contain(("DrehyaMagicLvl", "AnyaMagicLvl"))
-        );
-        Assert.That(result.RemovedColumns.Select(c => c.Name), Has.None.StartsWith("Hralti"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(oldNames, Is.Unique);
+            Assert.That(newNames, Is.Unique);
+            Assert.That(
+                result.ChangedColumns.Select(r => (r.Old.Name, r.New.Name)),
+                Does.Contain(("HraltiMagicMax", "HratliMagicMax"))
+                    .And.Contain(("DrehyaMagicLvl", "AnyaMagicLvl"))
+            );
+            Assert.That(result.RemovedColumns.Select(c => c.Name), Has.None.StartsWith("Hralti"));
+        }
     }
 
     [Test]

@@ -57,14 +57,6 @@ public static class ConvertService
         var targetRowNames = targetData[rowHeaderColumn];
 
         var rows = BuildOutputRows(rowMode, sourceRowNames, targetRowNames, schema.ChangedRows);
-        if (rowMode != RowConversionMode.None)
-            rows = ApplyVersionRowOrder(
-                rows,
-                sourceData,
-                targetData,
-                sourceRowNames,
-                targetRowNames
-            );
 
         var outputColumns = convertColumns ? targetData.Keys : sourceData.Keys;
         var oldToNew = new Dictionary<string, string>();
@@ -81,13 +73,17 @@ public static class ConvertService
             var sourceColumn = ResolveColumn(outCol, sourceData, newToOld);
             var targetColumn = ResolveColumn(outCol, targetData, oldToNew);
 
+            // Source wins whenever it has the cell, even blank: mixing per cell would pair a
+            // source stat with target params. Target only fills columns/rows the source lacks
             var values = new List<string>(rows.Count);
             foreach (var (sourceRow, targetRow) in rows)
             {
-                var value = sourceColumn is not null && sourceRow is int s ? sourceColumn[s] : "";
-                if (value.Length == 0 && targetColumn is not null && targetRow is int t)
-                    value = targetColumn[t];
-                values.Add(value);
+                if (sourceColumn is not null && sourceRow is int s)
+                    values.Add(sourceColumn[s]);
+                else if (targetColumn is not null && targetRow is int t)
+                    values.Add(targetColumn[t]);
+                else
+                    values.Add("");
             }
             output[outCol] = values;
         }
@@ -147,54 +143,6 @@ public static class ConvertService
             _ => sourceRows.Select(s => ((int?)s, TargetFor(s))).ToList(),
         };
     }
-
-    // Reorder rows so that: all version "0" first, then row "Expansion", then all version "100", then the rest.
-    private static List<(int? Source, int? Target)> ApplyVersionRowOrder(
-        List<(int? Source, int? Target)> rows,
-        Dictionary<string, List<string>> sourceData,
-        Dictionary<string, List<string>> targetData,
-        List<string> sourceRowNames,
-        List<string> targetRowNames
-    )
-    {
-        var sourceVersion = FindVersionColumn(sourceData);
-        var targetVersion = FindVersionColumn(targetData);
-        if (sourceVersion is null && targetVersion is null)
-            return rows;
-
-        string Version((int? Source, int? Target) row)
-        {
-            if (row.Source is int s && sourceVersion is not null)
-                return sourceVersion[s].Trim();
-            if (row.Target is int t && targetVersion is not null)
-                return targetVersion[t].Trim();
-            return "";
-        }
-
-        int Tier((int? Source, int? Target) row)
-        {
-            var name = row.Source is int s ? sourceRowNames[s] : targetRowNames[row.Target!.Value];
-            if (string.Equals(name, "Expansion", StringComparison.OrdinalIgnoreCase))
-                return 1;
-            return Version(row) switch
-            {
-                "0" => 0,
-                "100" => 2,
-                _ => 3,
-            };
-        }
-
-        return rows.Select((row, index) => (row, index, tier: Tier(row)))
-            .OrderBy(x => x.tier)
-            .ThenBy(x => x.index)
-            .Select(x => x.row)
-            .ToList();
-    }
-
-    private static List<string>? FindVersionColumn(Dictionary<string, List<string>> data) =>
-        data.FirstOrDefault(kv =>
-            string.Equals(kv.Key, "version", StringComparison.OrdinalIgnoreCase)
-        ).Value;
 
     // The column holding `outputCol` in `data`, following a rename if it has another name there
     private static List<string>? ResolveColumn(
