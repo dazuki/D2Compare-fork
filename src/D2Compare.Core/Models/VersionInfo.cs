@@ -29,6 +29,8 @@ public record VersionInfo(string DisplayName, string FolderName)
         new("3.2.0.0 (92777) - Expansion", "92777b"),
         new("3.3.0.0 (94995) - RoTW", "94995a"),
         new("3.3.0.0 (94995) - Expansion", "94995b"),
+        new("3.4.0.0 (95041) - RoTW", "95041a"),
+        new("3.4.0.0 (95041) - Expansion", "95041b"),
     ];
 
     public static IReadOnlyList<VersionInfo> BuiltInVersions => KnownVersions;

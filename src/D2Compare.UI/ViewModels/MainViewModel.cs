@@ -374,26 +374,21 @@ public partial class MainViewModel : ObservableObject
             _ = CheckForUpdateAsync();
     }
 
-    private const string DefaultSourceFolder = "92777a";
-
-    // Only fills selections that weren't restored from settings
+    // Only fills selections that weren't restored from settings.
+    // Defaults: target = newest RoTW, source = the RoTW before it
     private void ApplyDefaultVersions()
     {
-        if (SelectedSourceIndex < 0)
-        {
-            var index = ResolveSelection(DefaultSourceFolder);
-            if (index >= 0)
-                SelectedSourceIndex = index;
-        }
+        var rotw = _availableVersions
+            .Select((v, i) => (v, i))
+            .Where(x => x.v.DisplayName.EndsWith("- RoTW", StringComparison.Ordinal))
+            .Select(x => x.i)
+            .ToList();
 
-        if (SelectedTargetIndex < 0)
-        {
-            var index = _availableVersions
-                .ToList()
-                .FindLastIndex(v => v.DisplayName.EndsWith("- RoTW", StringComparison.Ordinal));
-            if (index >= 0)
-                SelectedTargetIndex = index;
-        }
+        if (SelectedSourceIndex < 0 && rotw.Count >= 2)
+            SelectedSourceIndex = rotw[^2];
+
+        if (SelectedTargetIndex < 0 && rotw.Count >= 1)
+            SelectedTargetIndex = rotw[^1];
     }
 
     // Maps a saved selection (folder name or "custom") to a dropdown index, -1 if unknown
