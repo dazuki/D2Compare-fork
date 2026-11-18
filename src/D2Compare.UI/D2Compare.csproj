@@ -8,7 +8,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>none</DebugType>
-    <Version>2.1.2-rc.4</Version>
+    <Version>2.1.2-rc.5</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,12 @@
 
   <!-- Debug-only XAML hot reload. Loader must match the Avalonia version: HotAvalonia bundles an Avalonia 11 one -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.6" PrivateAssets="All" Publish="True" />
+    <PackageReference
+      Include="Avalonia.Markup.Xaml.Loader"
+      Version="12.1.6"
+      PrivateAssets="All"
+      Publish="True"
+    />
     <PackageReference Include="HotAvalonia" Version="3.1.5" PrivateAssets="All" Publish="True" />
   </ItemGroup>
 
