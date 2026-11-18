@@ -22,6 +22,12 @@
     <PackageReference Include="TablerIcons.Avalonia" Version="3.44.0" />
   </ItemGroup>
 
+  <!-- Debug-only XAML hot reload. Loader must match the Avalonia version: HotAvalonia bundles an Avalonia 11 one -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.6" PrivateAssets="All" Publish="True" />
+    <PackageReference Include="HotAvalonia" Version="3.1.5" PrivateAssets="All" Publish="True" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\D2Compare.Core\D2Compare.Core.csproj" />
   </ItemGroup>
