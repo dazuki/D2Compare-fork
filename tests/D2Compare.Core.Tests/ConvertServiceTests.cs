@@ -6,6 +6,7 @@ namespace D2Compare.Core.Tests;
 public class ConvertServiceTests
 {
     private TestFiles _files = null!;
+    private static readonly string[] expected = new[] { "knock" };
 
     [SetUp]
     public void SetUp() => _files = new TestFiles();
@@ -29,27 +30,58 @@ public class ConvertServiceTests
         return CsvParser.Parse(Path.Combine(output, fileName));
     }
 
-    [Test]
-    public void ConvertFolder_ReproducesFileExactly_WhenSourceAndTargetAreIdentical()
+    // Row position is the row ID in D2 files, so no row mode may reorder rows
+    [TestCase(RowConversionMode.None)]
+    [TestCase(RowConversionMode.AppendOriginalAtEnd)]
+    [TestCase(RowConversionMode.AppendTargetAtEnd)]
+    public void ConvertFolder_ReproducesFilesExactly_WhenSourceAndTargetAreIdentical(
+        RowConversionMode mode
+    )
     {
-        // Hireling.txt repeats row names heavily (e.g. many "Rogue Scout" rows)
-        var hireling = TestFiles.BundledTxt("92777a", "hireling.txt");
-        File.Copy(hireling, Path.Combine(_files.Dir("src"), "hireling.txt"));
-        File.Copy(hireling, Path.Combine(_files.Dir("tgt"), "hireling.txt"));
+        // Hireling.txt repeats row names heavily (e.g. many "Rogue Scout" rows); the others
+        // have "version" 0 rows after 100 rows
+        string[] names = ["hireling.txt", "uniqueitems.txt", "magicprefix.txt", "cubemain.txt"];
+        foreach (var name in names)
+        {
+            var bundled = TestFiles.BundledTxt("95041a", name);
+            File.Copy(bundled, Path.Combine(_files.Dir("src"), name));
+            File.Copy(bundled, Path.Combine(_files.Dir("tgt"), name));
+        }
         var output = _files.Dir("out");
 
-        ConvertService.ConvertFolder(
-            _files.Dir("src"),
-            _files.Dir("tgt"),
-            output,
-            true,
+        ConvertService.ConvertFolder(_files.Dir("src"), _files.Dir("tgt"), output, true, mode);
+
+        foreach (var name in names)
+            Assert.That(
+                File.ReadAllBytes(Path.Combine(output, name)),
+                Is.EqualTo(File.ReadAllBytes(TestFiles.BundledTxt("95041a", name))),
+                name
+            );
+    }
+
+    [Test]
+    public void ConvertFolder_KeepsBlankSourceCells_WhenTargetHasValue()
+    {
+        // 3.3 -> 3.4 Griswolds Edge: filling only the blank par5 gave prop5=knock with par5=66
+        var output = Convert(
+            [
+                ["name", "prop5", "par5", "min5"],
+                ["Griswolds Edge", "knock", "", "1"],
+            ],
+            [
+                ["name", "prop5", "par5", "min5", "newcol"],
+                ["Griswolds Edge", "hit-skill", "66", "4", "x"],
+            ],
             RowConversionMode.None
         );
 
-        Assert.That(
-            File.ReadAllBytes(Path.Combine(output, "hireling.txt")),
-            Is.EqualTo(File.ReadAllBytes(hireling))
-        );
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(output["prop5"], Is.EqualTo(expected));
+            Assert.That(output["par5"], Is.EqualTo(new[] { "" }));
+            Assert.That(output["min5"], Is.EqualTo(new[] { "1" }));
+            Assert.That(output["newcol"], Is.EqualTo(new[] { "x" }));
+        }
     }
 
     [Test]
@@ -87,9 +119,12 @@ public class ConvertServiceTests
             RowConversionMode.None
         );
 
-        Assert.That(output.Keys, Is.EqualTo(new[] { "name", "HratliMin", "newcol" }));
-        Assert.That(output["HratliMin"], Is.EqualTo(new[] { "7" }));
-        Assert.That(output["newcol"], Is.EqualTo(new[] { "x" }));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(output.Keys, Is.EqualTo(new[] { "name", "HratliMin", "newcol" }));
+            Assert.That(output["HratliMin"], Is.EqualTo(new[] { "7" }));
+            Assert.That(output["newcol"], Is.EqualTo(new[] { "x" }));
+        }
     }
 
     [Test]
@@ -108,8 +143,11 @@ public class ConvertServiceTests
             RowConversionMode.AppendTargetAtEnd
         );
 
-        Assert.That(output["name"], Is.EqualTo(new[] { "a", "b" }));
-        Assert.That(output["v"], Is.EqualTo(new[] { "1", "2" }));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(output["name"], Is.EqualTo(new[] { "a", "b" }));
+            Assert.That(output["v"], Is.EqualTo(new[] { "1", "2" }));
+        }
     }
 
     [Test]
@@ -129,8 +167,11 @@ public class ConvertServiceTests
             RowConversionMode.AppendOriginalAtEnd
         );
 
-        Assert.That(output["name"], Is.EqualTo(new[] { "b", "a", "old" }));
-        Assert.That(output["v"], Is.EqualTo(new[] { "2", "1", "3" }));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(output["name"], Is.EqualTo(new[] { "b", "a", "old" }));
+            Assert.That(output["v"], Is.EqualTo(new[] { "2", "1", "3" }));
+        }
     }
 
     [Test]
@@ -150,8 +191,11 @@ public class ConvertServiceTests
             fileName: "CubeMain.txt"
         );
 
-        // One row, not the target row plus the source row appended again
-        Assert.That(output["description"], Is.EqualTo(new[] { "2 arrows -> bolts" }));
-        Assert.That(output["v"], Is.EqualTo(new[] { "1" }));
+        using (Assert.EnterMultipleScope())
+        {
+            // One row, not the target row plus the source row appended again
+            Assert.That(output["description"], Is.EqualTo(new[] { "2 arrows -> bolts" }));
+            Assert.That(output["v"], Is.EqualTo(new[] { "1" }));
+        }
     }
 }

@@ -34,8 +34,17 @@ public class SchemaFixProviderTests
     [Test]
     public void IsKnownRename_AppliesFileRuleOnlyToItsFile()
     {
-        Assert.That(SchemaFixProvider.IsKnownRename("Weapons.txt", "special", "*comment"), Is.True);
-        Assert.That(SchemaFixProvider.IsKnownRename("Armor.txt", "special", "*comment"), Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(
+                SchemaFixProvider.IsKnownRename("Weapons.txt", "special", "*comment"),
+                Is.True
+            );
+            Assert.That(
+                SchemaFixProvider.IsKnownRename("Armor.txt", "special", "*comment"),
+                Is.False
+            );
+        }
     }
 
     [Test]
@@ -50,17 +59,20 @@ public class SchemaFixProviderTests
     {
         var unused = new IndexedName(204, "unused204");
 
-        Assert.That(
-            SchemaFixProvider.IsReusedSlot("ItemStatCost.txt", unused, new(204, "new_stat")),
-            Is.True
-        );
-        Assert.That(
-            SchemaFixProvider.IsReusedSlot("ItemStatCost.txt", unused, new(205, "new_stat")),
-            Is.False
-        );
-        Assert.That(
-            SchemaFixProvider.IsReusedSlot("Skills.txt", unused, new(204, "new_stat")),
-            Is.False
-        );
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(
+                SchemaFixProvider.IsReusedSlot("ItemStatCost.txt", unused, new(204, "new_stat")),
+                Is.True
+            );
+            Assert.That(
+                SchemaFixProvider.IsReusedSlot("ItemStatCost.txt", unused, new(205, "new_stat")),
+                Is.False
+            );
+            Assert.That(
+                SchemaFixProvider.IsReusedSlot("Skills.txt", unused, new(204, "new_stat")),
+                Is.False
+            );
+        }
     }
 }

@@ -35,11 +35,19 @@ public class DiffRowBuilderTests
     {
         var unchanged = CompareResult.Empty("Misc.txt");
 
-        Assert.That(DiffRowBuilder.BuildRowRows([unchanged], includeUnchanged: false), Is.Empty);
-        Assert.That(
-            DiffRowBuilder.BuildRowRows([unchanged], includeUnchanged: true),
-            Is.EqualTo(new[] { new SchemaDiffRow("Misc.txt", ChangeKind.Unchanged, null, "", "") })
-        );
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(
+                DiffRowBuilder.BuildRowRows([unchanged], includeUnchanged: false),
+                Is.Empty
+            );
+            Assert.That(
+                DiffRowBuilder.BuildRowRows([unchanged], includeUnchanged: true),
+                Is.EqualTo(
+                    new[] { new SchemaDiffRow("Misc.txt", ChangeKind.Unchanged, null, "", "") }
+                )
+            );
+        }
     }
 
     [Test]
@@ -68,6 +76,8 @@ public class DiffRowBuilderTests
         );
     }
 
+    private static readonly string[] expected = new[] { "Added: Row 9 - Helm" };
+
     [Test]
     public void BuildValueRows_KeepsOnlyNewRows_WhenShowOnlyNew()
     {
@@ -82,7 +92,7 @@ public class DiffRowBuilderTests
 
         var rows = DiffRowBuilder.BuildValueRows([result], showOnlyNew: true);
 
-        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(new[] { "Added: Row 9 - Helm" }));
+        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(expected));
     }
 
     [Test]
@@ -106,8 +116,11 @@ public class DiffRowBuilderTests
             new("Armor.txt", "Row 4 - Helm", false, "lvl", "3", "4"),
         ];
 
-        Assert.That(DiffRowBuilder.Filter(rows, "cap"), Is.EqualTo(rows[..2]));
-        Assert.That(DiffRowBuilder.Filter(rows, "speed"), Is.EqualTo(rows[1..2]));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(DiffRowBuilder.Filter(rows, "cap"), Is.EqualTo(rows[..2]));
+            Assert.That(DiffRowBuilder.Filter(rows, "speed"), Is.EqualTo(rows[1..2]));
+        }
     }
 
     [Test]

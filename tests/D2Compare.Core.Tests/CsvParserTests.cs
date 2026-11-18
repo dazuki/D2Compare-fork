@@ -20,8 +20,11 @@ public class CsvParserTests
 
         var data = CsvParser.Parse(path);
 
-        Assert.That(data.Keys, Is.EqualTo(new[] { "name", "code", "code (2)" }));
-        Assert.That(data["code (2)"], Is.EqualTo(new[] { "2" }));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(data.Keys, Is.EqualTo(new[] { "name", "code", "code (2)" }));
+            Assert.That(data["code (2)"], Is.EqualTo(new[] { "2" }));
+        }
     }
 
     [Test]
@@ -47,8 +50,11 @@ public class CsvParserTests
 
         var data = CsvParser.Parse(path, out var encoding);
 
-        Assert.That(encoding.CodePage, Is.EqualTo(1252));
-        Assert.That(data["name"][0], Is.EqualTo("King’s"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(encoding.CodePage, Is.EqualTo(1252));
+            Assert.That(data["name"][0], Is.EqualTo("King’s"));
+        }
     }
 
     [Test]
@@ -61,7 +67,10 @@ public class CsvParserTests
 
         var data = CsvParser.Parse(path, out var encoding);
 
-        Assert.That(data.Keys, Is.EqualTo(new[] { "name" }));
-        Assert.That(encoding, Is.InstanceOf<UTF8Encoding>());
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(data.Keys, Is.EqualTo(new[] { "name" }));
+            Assert.That(encoding, Is.InstanceOf<UTF8Encoding>());
+        }
     }
 }
