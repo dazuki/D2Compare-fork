@@ -14,6 +14,25 @@ namespace D2Compare.Views;
 
 public partial class MainWindow : Window
 {
+    // ProDataGrid 12.1.5: a recycled group header gets its new indent while still hidden, so its
+    // template grid keeps the old spacer column width (e.g. a reused file header shows a
+    // data-row header unindented). Remeasure once it is shown again.
+    static MainWindow() =>
+        IsVisibleProperty.Changed.AddClassHandler<DataGridRowGroupHeader>(
+            (header, _) =>
+            {
+                if (
+                    header.IsVisible
+                    && header
+                        .GetVisualDescendants()
+                        .OfType<Control>()
+                        .FirstOrDefault(c => c.Name == "PART_Root")
+                        is { } root
+                )
+                    root.InvalidateMeasure();
+            }
+        );
+
     public MainWindow()
     {
         InitializeComponent();
