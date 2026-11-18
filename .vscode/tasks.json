@@ -1,0 +1,87 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Debug Run (hot reload)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "src/D2Compare.UI/D2Compare.csproj",
+        "-c",
+        "Debug",
+        "-nologo"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Win: Publish",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "src/D2Compare.UI/D2Compare.csproj",
+        "-r",
+        "win-x64",
+        "--self-contained",
+        "true",
+        "-o",
+        "/mnt/c/Users/lali/D2Compare-test",
+        "-nologo"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "Win: Run",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "Start-Process -FilePath 'C:\\Users\\lali\\D2Compare-test\\D2Compare.exe' -WorkingDirectory 'C:\\Users\\lali\\D2Compare-test'"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "Win: Publish+Run",
+      "dependsOn": ["Win: Publish", "Win: Run"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Linux: Publish",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "src/D2Compare.UI/D2Compare.csproj",
+        "-r",
+        "linux-x64",
+        "--self-contained",
+        "true",
+        "-o",
+        "${userHome}/D2Compare-test",
+        "-nologo"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "Linux: Run",
+      "type": "process",
+      "command": "${userHome}/D2Compare-test/D2Compare",
+      "options": { "cwd": "${userHome}/D2Compare-test" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "Linux: Publish+Run",
+      "dependsOn": ["Linux: Publish", "Linux: Run"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ]
+}
