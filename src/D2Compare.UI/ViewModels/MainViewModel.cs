@@ -855,7 +855,7 @@ public partial class MainViewModel : ObservableObject
         ValuesView = CreateView(
             valueRows,
             batch ? DiffRowBuilder.Summarize(valueRows) : null,
-            nameof(ValueDiffRow.RowLabel)
+            nameof(ValueDiffRow.RowGroup)
         );
         ColumnsHasContent = columnRows.Count > 0;
         RowsHasContent = rowRows.Count > 0;

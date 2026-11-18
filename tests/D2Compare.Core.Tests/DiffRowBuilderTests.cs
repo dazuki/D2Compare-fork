@@ -61,8 +61,8 @@ public class DiffRowBuilderTests
             Is.EqualTo(
                 new[]
                 {
-                    new ValueDiffRow("Armor.txt", "Cap (Row 3)", false, "lvl", "1", "2"),
-                    new ValueDiffRow("Armor.txt", "Added (Row 9): Helm", true, "lvl", "", "5"),
+                    new ValueDiffRow("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
+                    new ValueDiffRow("Armor.txt", "Row 9 - Helm", true, "lvl", "", "5"),
                 }
             )
         );
@@ -82,7 +82,7 @@ public class DiffRowBuilderTests
 
         var rows = DiffRowBuilder.BuildValueRows([result], showOnlyNew: true);
 
-        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(new[] { "Added (Row 9): Helm" }));
+        Assert.That(rows.Select(r => r.RowLabel), Is.EqualTo(new[] { "Added: Row 9 - Helm" }));
     }
 
     [Test]
@@ -101,9 +101,9 @@ public class DiffRowBuilderTests
     {
         ValueDiffRow[] rows =
         [
-            new("Armor.txt", "Cap (Row 3)", false, "lvl", "1", "2"),
-            new("Armor.txt", "Cap (Row 3)", false, "speed", "0", "5"),
-            new("Armor.txt", "Helm (Row 4)", false, "lvl", "3", "4"),
+            new("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
+            new("Armor.txt", "Row 3 - Cap", false, "speed", "0", "5"),
+            new("Armor.txt", "Row 4 - Helm", false, "lvl", "3", "4"),
         ];
 
         Assert.That(DiffRowBuilder.Filter(rows, "cap"), Is.EqualTo(rows[..2]));
@@ -127,9 +127,9 @@ public class DiffRowBuilderTests
     {
         ValueDiffRow[] rows =
         [
-            new("Armor.txt", "Cap (Row 3)", false, "lvl", "1", "2"),
-            new("Armor.txt", "Cap (Row 3)", false, "speed", "0", "5"),
-            new("Armor.txt", "Added (Row 9): Helm", true, "lvl", "", "5"),
+            new("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
+            new("Armor.txt", "Row 3 - Cap", false, "speed", "0", "5"),
+            new("Armor.txt", "Row 9 - Helm", true, "lvl", "", "5"),
         ];
 
         Assert.That(

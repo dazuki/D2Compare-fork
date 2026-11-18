@@ -113,6 +113,17 @@
                   </Style>
                 </ContentControl.Styles>
                 <ContentControl.DataTemplates>
+                  <DataTemplate DataType="models:ValueRowGroup">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource StatAddedBrush}"
+                        IsVisible="{Binding IsNew}"
+                        Text="Added:"
+                      />
+                      <TextBlock Text="{Binding Title}" />
+                    </StackPanel>
+                  </DataTemplate>
                   <!--  Values: "~changed +new", same order as the panel header  -->
                   <DataTemplate DataType="models:ValueFileSummary">
                     <StackPanel Classes="file" Orientation="Horizontal" Spacing="8">

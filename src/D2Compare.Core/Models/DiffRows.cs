@@ -20,15 +20,26 @@ public record SchemaDiffRow(
     public string Change => Kind.ToString();
 }
 
-// One cell change. RowLabel names the data row the change belongs to.
+// One cell change. RowTitle names the data row the change belongs to.
 public record ValueDiffRow(
     string FileName,
-    string RowLabel,
+    string RowTitle,
     bool IsNewRow,
     string Column,
     string OldValue,
     string NewValue
-);
+)
+{
+    public ValueRowGroup RowGroup => new(RowTitle, IsNewRow);
+    public string RowLabel => RowGroup.ToString();
+}
+
+// Values panel data-row group key; its own type lets the header show "Added:" SemiBold.
+// ToString gives the full label for search, clipboard and other text fallbacks.
+public record ValueRowGroup(string Title, bool IsNew)
+{
+    public sealed override string ToString() => IsNew ? $"Added: {Title}" : Title;
+}
 
 // Per-file change counts shown in a file's group header. ToString gives the plain name
 // so anything that falls back to text (clipboard, automation) still reads the file name.

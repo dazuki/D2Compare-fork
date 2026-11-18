@@ -50,12 +50,12 @@ public static class DiffRowBuilder
             if (showOnlyNew && !group.IsNew)
                 continue;
 
-            var label = RowLabel(group);
+            var title = $"Row {group.Row} - {group.RowName}";
             foreach (var change in group.Changes)
                 rows.Add(
                     new ValueDiffRow(
                         result.FileName,
-                        label,
+                        title,
                         group.IsNew,
                         change.Column,
                         change.OldValue ?? "",
@@ -65,11 +65,6 @@ public static class DiffRowBuilder
         }
         return rows;
     }
-
-    public static string RowLabel(DiffGroup group) =>
-        group.IsNew
-            ? $"Added (Row {group.Row}): {group.RowName}"
-            : $"{group.RowName} (Row {group.Row})";
 
     // Unchanged placeholders carry no data, so they never match a search
     public static List<SchemaDiffRow> Filter(IEnumerable<SchemaDiffRow> rows, string term) =>

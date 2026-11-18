@@ -44,8 +44,8 @@ public class DiffRowTextFormatterTests
     {
         ValueDiffRow[] rows =
         [
-            new("Armor.txt", "Cap (Row 3)", false, "lvl", "1", "2"),
-            new("Armor.txt", "Added (Row 9): Helm", true, "lvl", "", "5"),
+            new("Armor.txt", "Row 3 - Cap", false, "lvl", "1", "2"),
+            new("Armor.txt", "Row 9 - Helm", true, "lvl", "", "5"),
         ];
 
         var lines = DiffRowTextFormatter.FormatValueRows(rows, isBatchMode: false);
@@ -55,10 +55,10 @@ public class DiffRowTextFormatterTests
             Is.EqualTo(
                 new[]
                 {
-                    "Cap (Row 3)",
+                    "Row 3 - Cap",
                     " lvl: '1' -> '2'",
                     "",
-                    "Added (Row 9): Helm",
+                    "Added: Row 9 - Helm",
                     " lvl: '5'",
                     "",
                 }
