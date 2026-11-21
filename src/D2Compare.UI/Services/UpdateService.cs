@@ -1,12 +1,9 @@
 using System.Diagnostics;
 using System.Formats.Tar;
-using System.IO;
 using System.IO.Compression;
-using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Threading;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 
@@ -17,7 +14,7 @@ public record UpdateInfo(string TagName, string Version, string DownloadUrl, str
 // WorkDir is the private temp folder holding everything; StagingDir has the extracted release
 public record StagedUpdate(string WorkDir, string StagingDir);
 
-public class UpdateService
+public static class UpdateService
 {
     private const string ApiUrl =
         "https://api.github.com/repos/dazuki/D2Compare-fork/releases/latest";

@@ -60,8 +60,8 @@ public static class CompareService
         var targetRowKeys = RowInstanceKeyHelper.BuildKeys(targetData[rowHeaderColumn]);
         var rows = MatchRenames(
             fileName,
-            Missing(sourceRowKeys, targetRowKeys.ToHashSet()),
-            Missing(targetRowKeys, sourceRowKeys.ToHashSet())
+            Missing(sourceRowKeys, [.. targetRowKeys]),
+            Missing(targetRowKeys, [.. sourceRowKeys])
         );
 
         return new CompareResult(
@@ -192,14 +192,18 @@ public static class CompareService
         List<RowInstanceKey> rows,
         HashSet<RowInstanceKey> other
     ) =>
-        rows.Select((key, i) => (key, i))
-            .Where(x => !other.Contains(x.key))
-            .Select(x => new IndexedName(x.i, x.key.Name))
-            .ToList();
+        [
+            .. rows.Select((key, i) => (key, i))
+                .Where(x => !other.Contains(x.key))
+                .Select(x => new IndexedName(x.i, x.key.Name)),
+        ];
 
     private static string[] GetTxtFiles(string path) =>
-        Directory
-            .GetFiles(path)
-            .Where(f => Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        [
+            .. Directory
+                .GetFiles(path)
+                .Where(f =>
+                    Path.GetExtension(f).Equals(".txt", StringComparison.OrdinalIgnoreCase)
+                ),
+        ];
 }

@@ -9,8 +9,8 @@ public static class DiffRowBuilder
         IEnumerable<CompareResult> results,
         bool includeUnchanged
     ) =>
-        results
-            .SelectMany(r =>
+        [
+            .. results.SelectMany(r =>
                 BuildSchemaRows(
                     r.FileName,
                     r.ChangedColumns,
@@ -18,15 +18,15 @@ public static class DiffRowBuilder
                     r.RemovedColumns,
                     includeUnchanged
                 )
-            )
-            .ToList();
+            ),
+        ];
 
     public static List<SchemaDiffRow> BuildRowRows(
         IEnumerable<CompareResult> results,
         bool includeUnchanged
     ) =>
-        results
-            .SelectMany(r =>
+        [
+            .. results.SelectMany(r =>
                 BuildSchemaRows(
                     r.FileName,
                     r.ChangedRows,
@@ -34,8 +34,8 @@ public static class DiffRowBuilder
                     r.RemovedRows,
                     includeUnchanged
                 )
-            )
-            .ToList();
+            ),
+        ];
 
     // Files without value changes get no rows: an empty values group says nothing useful
     public static List<ValueDiffRow> BuildValueRows(
@@ -68,7 +68,8 @@ public static class DiffRowBuilder
 
     // Unchanged placeholders carry no data, so they never match a search
     public static List<SchemaDiffRow> Filter(IEnumerable<SchemaDiffRow> rows, string term) =>
-        rows.Where(r =>
+        [
+            .. rows.Where(r =>
                 r.Kind != ChangeKind.Unchanged
                 && (
                     Matches(r.Change, term)
@@ -76,18 +77,19 @@ public static class DiffRowBuilder
                     || Matches(r.OldName, term)
                     || Matches(r.NewName, term)
                 )
-            )
-            .ToList();
+            ),
+        ];
 
     // A RowLabel match keeps every change of that data row, so the context stays visible
     public static List<ValueDiffRow> Filter(IEnumerable<ValueDiffRow> rows, string term) =>
-        rows.Where(r =>
+        [
+            .. rows.Where(r =>
                 Matches(r.RowLabel, term)
                 || Matches(r.Column, term)
                 || Matches(r.OldValue, term)
                 || Matches(r.NewValue, term)
-            )
-            .ToList();
+            ),
+        ];
 
     public static Dictionary<string, FileSummary> Summarize(IEnumerable<SchemaDiffRow> rows) =>
         rows.GroupBy(r => r.FileName)
@@ -119,7 +121,7 @@ public static class DiffRowBuilder
             );
 
     private static bool Matches(string? text, string term) =>
-        text is not null && text.Contains(term, StringComparison.OrdinalIgnoreCase);
+        text?.Contains(term, StringComparison.OrdinalIgnoreCase) == true;
 
     // Added first, then Removed, then Changed, so new content leads each file
     private static IEnumerable<SchemaDiffRow> BuildSchemaRows(

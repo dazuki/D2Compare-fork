@@ -128,19 +128,17 @@ public static class ConvertService
 
         return rowMode switch
         {
-            RowConversionMode.AppendOriginalAtEnd => targetRows
-                .Select(t => (SourceFor(t), (int?)t))
-                .Concat(
-                    sourceRows.Where(s => TargetFor(s) is null).Select(s => ((int?)s, (int?)null))
-                )
-                .ToList(),
-            RowConversionMode.AppendTargetAtEnd => sourceRows
-                .Select(s => ((int?)s, TargetFor(s)))
-                .Concat(
-                    targetRows.Where(t => SourceFor(t) is null).Select(t => ((int?)null, (int?)t))
-                )
-                .ToList(),
-            _ => sourceRows.Select(s => ((int?)s, TargetFor(s))).ToList(),
+            RowConversionMode.AppendOriginalAtEnd =>
+            [
+                .. targetRows.Select(t => (SourceFor(t), (int?)t)),
+                .. sourceRows.Where(s => TargetFor(s) is null).Select(s => ((int?)s, (int?)null)),
+            ],
+            RowConversionMode.AppendTargetAtEnd =>
+            [
+                .. sourceRows.Select(s => ((int?)s, TargetFor(s))),
+                .. targetRows.Where(t => SourceFor(t) is null).Select(t => ((int?)null, (int?)t)),
+            ],
+            _ => [.. sourceRows.Select(s => ((int?)s, TargetFor(s)))],
         };
     }
 

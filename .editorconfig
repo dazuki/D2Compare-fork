@@ -261,7 +261,8 @@ dotnet_naming_rule.public_static_readonly_fields_should_be_pascalcase.severity =
 dotnet_naming_rule.public_static_readonly_fields_should_be_pascalcase.symbols = public_static_readonly_fields
 dotnet_naming_rule.public_static_readonly_fields_should_be_pascalcase.style = pascalcase
 
-dotnet_naming_rule.private_static_readonly_fields_should_be_pascalcase.severity = suggestion
+# none: the code mixes s_camelCase and PascalCase here; both are accepted
+dotnet_naming_rule.private_static_readonly_fields_should_be_pascalcase.severity = none
 dotnet_naming_rule.private_static_readonly_fields_should_be_pascalcase.symbols = private_static_readonly_fields
 dotnet_naming_rule.private_static_readonly_fields_should_be_pascalcase.style = pascalcase
 
@@ -406,6 +407,11 @@ max_line_length = 100
 # Analyzer rules that depend on CSharpier's line wrapping
 # RCS1001: add braces when the body spans multiple lines
 dotnet_diagnostic.RCS1001.severity = none
+# RCS1003: add braces to if-else when a branch spans multiple lines
+dotnet_diagnostic.RCS1003.severity = none
+
+# CDT1001: prefer `== true` / `!= true` over `is true` / `is not true`
+dotnet_diagnostic.CDT1001.severity = none
 
 [*.{config,csproj,props,slnx,targets,xaml,xml}]
 indent_style = space

@@ -60,12 +60,14 @@ public static class DiffEngine
             }
         );
 
-        return groups
-            .OrderBy(g => g.Group.Row)
-            .ThenBy(g => g.SourceOrder)
-            .ThenBy(g => g.Group.RowName, StringComparer.Ordinal)
-            .Select(g => g.Group)
-            .ToList();
+        return
+        [
+            .. groups
+                .OrderBy(g => g.Group.Row)
+                .ThenBy(g => g.SourceOrder)
+                .ThenBy(g => g.Group.RowName, StringComparer.Ordinal)
+                .Select(g => g.Group),
+        ];
     }
 
     private static List<ValueChange> ChangedValues(

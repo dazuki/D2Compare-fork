@@ -25,10 +25,10 @@ public partial class MainViewModel : ObservableObject
     private readonly TopLevel _topLevel;
 
     [ObservableProperty]
-    private ObservableCollection<string> _sourceVersions = new();
+    private ObservableCollection<string> _sourceVersions = [];
 
     [ObservableProperty]
-    private ObservableCollection<string> _targetVersions = new();
+    private ObservableCollection<string> _targetVersions = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSourceCustom))]
@@ -39,7 +39,7 @@ public partial class MainViewModel : ObservableObject
     private int _selectedTargetIndex = -1;
 
     [ObservableProperty]
-    private ObservableCollection<string> _fileList = new();
+    private ObservableCollection<string> _fileList = [];
 
     [ObservableProperty]
     private int _selectedFileIndex = -1;
@@ -173,20 +173,20 @@ public partial class MainViewModel : ObservableObject
     private bool _valuesCollapsed;
 
     partial void OnColumnsCollapsedChanged(bool value) =>
-        SaveCollapsed(() => _settings.ColumnsCollapsed = value);
+        SaveCollapsed(() => Settings.ColumnsCollapsed = value);
 
     partial void OnRowsCollapsedChanged(bool value) =>
-        SaveCollapsed(() => _settings.RowsCollapsed = value);
+        SaveCollapsed(() => Settings.RowsCollapsed = value);
 
     partial void OnValuesCollapsedChanged(bool value) =>
-        SaveCollapsed(() => _settings.ValuesCollapsed = value);
+        SaveCollapsed(() => Settings.ValuesCollapsed = value);
 
     private void SaveCollapsed(Action apply)
     {
         if (IsSearchFiltered)
             return;
         apply();
-        _settings.Save();
+        Settings.Save();
     }
 
     // Toggles follow what a search shows (all open) so one click collapses again
@@ -199,9 +199,9 @@ public partial class MainViewModel : ObservableObject
 
     private void RestoreCollapsedFromSettings()
     {
-        ColumnsCollapsed = _settings.ColumnsCollapsed;
-        RowsCollapsed = _settings.RowsCollapsed;
-        ValuesCollapsed = _settings.ValuesCollapsed;
+        ColumnsCollapsed = Settings.ColumnsCollapsed;
+        RowsCollapsed = Settings.RowsCollapsed;
+        ValuesCollapsed = Settings.ValuesCollapsed;
     }
 
     public HighlightOnlySearchModel ColumnsSearch { get; } = new(SearchHighlightMode.TextAndCell);
@@ -243,13 +243,12 @@ public partial class MainViewModel : ObservableObject
     partial void OnFilesDocumentChanged(FormattedDocument? value) =>
         OnPropertyChanged(nameof(HasNoFileChanges));
 
-    public AppSettings Settings => _settings;
-    private readonly AppSettings _settings;
+    public AppSettings Settings { get; }
     private readonly IReadOnlyList<VersionInfo> _availableVersions;
 
     private string _sourceFolderPath = "";
     private string _targetFolderPath = "";
-    private List<CompareResult> _batchResults = new();
+    private List<CompareResult> _batchResults = [];
 
     // Full rows of the current comparison; a search filters these into the visible rows
     private List<SchemaDiffRow> _allColumnRows = [];
@@ -295,12 +294,12 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(TopLevel topLevel)
     {
         _topLevel = topLevel;
-        _settings = AppSettings.Load();
+        Settings = AppSettings.Load();
 
-        IsDarkMode = _settings.IsDarkMode;
-        ColumnsCollapsed = _settings.ColumnsCollapsed;
-        RowsCollapsed = _settings.RowsCollapsed;
-        ValuesCollapsed = _settings.ValuesCollapsed;
+        IsDarkMode = Settings.IsDarkMode;
+        ColumnsCollapsed = Settings.ColumnsCollapsed;
+        RowsCollapsed = Settings.RowsCollapsed;
+        ValuesCollapsed = Settings.ValuesCollapsed;
         if (IsDarkMode && Avalonia.Application.Current is { } app)
             app.RequestedThemeVariant = ThemeVariant.Dark;
 
@@ -316,52 +315,52 @@ public partial class MainViewModel : ObservableObject
 
         // Restore custom paths before setting indices (only if directory still exists)
         if (
-            !string.IsNullOrEmpty(_settings.CustomSourcePath)
-            && Directory.Exists(_settings.CustomSourcePath)
+            !string.IsNullOrEmpty(Settings.CustomSourcePath)
+            && Directory.Exists(Settings.CustomSourcePath)
         )
         {
-            _sourceFolderPath = _settings.CustomSourcePath;
-            SourceVersions[customIndex] = _settings.CustomSourcePath;
+            _sourceFolderPath = Settings.CustomSourcePath;
+            SourceVersions[customIndex] = Settings.CustomSourcePath;
         }
-        else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
+        else if (!string.IsNullOrEmpty(Settings.CustomSourcePath))
         {
-            _settings.CustomSourcePath = "";
-            if (_settings.SelectedSource == AppSettings.CustomSelection)
-                _settings.SelectedSource = null;
-            _settings.Save();
-            StatusText = $"Custom source folder no longer exists";
+            Settings.CustomSourcePath = "";
+            if (Settings.SelectedSource == AppSettings.CustomSelection)
+                Settings.SelectedSource = null;
+            Settings.Save();
+            StatusText = "Custom source folder no longer exists";
             IsStatusWarning = true;
         }
 
         if (
-            !string.IsNullOrEmpty(_settings.CustomTargetPath)
-            && Directory.Exists(_settings.CustomTargetPath)
+            !string.IsNullOrEmpty(Settings.CustomTargetPath)
+            && Directory.Exists(Settings.CustomTargetPath)
         )
         {
-            _targetFolderPath = _settings.CustomTargetPath;
-            TargetVersions[customIndex] = _settings.CustomTargetPath;
+            _targetFolderPath = Settings.CustomTargetPath;
+            TargetVersions[customIndex] = Settings.CustomTargetPath;
         }
-        else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
+        else if (!string.IsNullOrEmpty(Settings.CustomTargetPath))
         {
-            _settings.CustomTargetPath = "";
-            if (_settings.SelectedTarget == AppSettings.CustomSelection)
-                _settings.SelectedTarget = null;
-            _settings.Save();
-            StatusText = $"Custom target folder no longer exists";
+            Settings.CustomTargetPath = "";
+            if (Settings.SelectedTarget == AppSettings.CustomSelection)
+                Settings.SelectedTarget = null;
+            Settings.Save();
+            StatusText = "Custom target folder no longer exists";
             IsStatusWarning = true;
         }
 
-        var savedSource = ResolveSelection(_settings.SelectedSource);
+        var savedSource = ResolveSelection(Settings.SelectedSource);
         if (
             savedSource >= 0
-            && (savedSource < customIndex || !string.IsNullOrEmpty(_settings.CustomSourcePath))
+            && (savedSource < customIndex || !string.IsNullOrEmpty(Settings.CustomSourcePath))
         )
             SelectedSourceIndex = savedSource;
 
-        var savedTarget = ResolveSelection(_settings.SelectedTarget);
+        var savedTarget = ResolveSelection(Settings.SelectedTarget);
         if (
             savedTarget >= 0
-            && (savedTarget < customIndex || !string.IsNullOrEmpty(_settings.CustomTargetPath))
+            && (savedTarget < customIndex || !string.IsNullOrEmpty(Settings.CustomTargetPath))
         )
             SelectedTargetIndex = savedTarget;
 
@@ -370,7 +369,7 @@ public partial class MainViewModel : ObservableObject
         foreach (var search in AllSearchModels)
             search.ResultsChanged += (_, _) => UpdateMatchLabel();
 
-        if (!_settings.DisableUpdateCheck)
+        if (!Settings.DisableUpdateCheck)
             _ = CheckForUpdateAsync();
     }
 
@@ -418,11 +417,11 @@ public partial class MainViewModel : ObservableObject
 
         if (value < _availableVersions.Count)
             _sourceFolderPath = _availableVersions[value].GetPath();
-        else if (!string.IsNullOrEmpty(_settings.CustomSourcePath))
-            _sourceFolderPath = _settings.CustomSourcePath;
+        else if (!string.IsNullOrEmpty(Settings.CustomSourcePath))
+            _sourceFolderPath = Settings.CustomSourcePath;
 
-        _settings.SelectedSource = ToSelection(value);
-        _settings.Save();
+        Settings.SelectedSource = ToSelection(value);
+        Settings.Save();
         OnTargetChanged();
     }
 
@@ -433,11 +432,11 @@ public partial class MainViewModel : ObservableObject
 
         if (value < _availableVersions.Count)
             _targetFolderPath = _availableVersions[value].GetPath();
-        else if (!string.IsNullOrEmpty(_settings.CustomTargetPath))
-            _targetFolderPath = _settings.CustomTargetPath;
+        else if (!string.IsNullOrEmpty(Settings.CustomTargetPath))
+            _targetFolderPath = Settings.CustomTargetPath;
 
-        _settings.SelectedTarget = ToSelection(value);
-        _settings.Save();
+        Settings.SelectedTarget = ToSelection(value);
+        Settings.Save();
         OnTargetChanged();
     }
 
@@ -718,8 +717,8 @@ public partial class MainViewModel : ObservableObject
         if (Avalonia.Application.Current is { } app)
             app.RequestedThemeVariant = IsDarkMode ? ThemeVariant.Dark : ThemeVariant.Light;
 
-        _settings.IsDarkMode = IsDarkMode;
-        _settings.Save();
+        Settings.IsDarkMode = IsDarkMode;
+        Settings.Save();
     }
 
     [RelayCommand]
@@ -759,7 +758,7 @@ public partial class MainViewModel : ObservableObject
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             viewerPath = GetWindowsViewerPathFromRegistry();
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            viewerPath = _settings.LinuxViewerPath;
+            viewerPath = Settings.LinuxViewerPath;
 
         ProcessStartInfo psi;
         if (!string.IsNullOrWhiteSpace(viewerPath) && File.Exists(viewerPath))
@@ -798,11 +797,9 @@ public partial class MainViewModel : ObservableObject
     private static string? GetWindowsViewerPathFromRegistry()
     {
         const string valueName = "ExecutablePath";
-        const string KeyPath = @"Software\d2_horadrim";
-        using (var legacyKey = Registry.CurrentUser.OpenSubKey(KeyPath, writable: false))
-        {
-            return legacyKey?.GetValue(valueName) as string;
-        }
+        const string keyPath = @"Software\d2_horadrim";
+        using var legacyKey = Registry.CurrentUser.OpenSubKey(keyPath, writable: false);
+        return legacyKey?.GetValue(valueName) as string;
     }
 
     private void ShowResults(IReadOnlyList<CompareResult> results, bool isBatch)
@@ -1012,9 +1009,9 @@ public partial class MainViewModel : ObservableObject
             {
                 _sourceFolderPath = path;
                 SourceVersions[customIndex] = path;
-                _settings.SelectedSource = AppSettings.CustomSelection;
-                _settings.CustomSourcePath = path;
-                _settings.Save();
+                Settings.SelectedSource = AppSettings.CustomSelection;
+                Settings.CustomSourcePath = path;
+                Settings.Save();
                 SelectedSourceIndex = customIndex;
                 OnPropertyChanged(nameof(IsSourceCustom));
             }
@@ -1022,9 +1019,9 @@ public partial class MainViewModel : ObservableObject
             {
                 _targetFolderPath = path;
                 TargetVersions[customIndex] = path;
-                _settings.SelectedTarget = AppSettings.CustomSelection;
-                _settings.CustomTargetPath = path;
-                _settings.Save();
+                Settings.SelectedTarget = AppSettings.CustomSelection;
+                Settings.CustomTargetPath = path;
+                Settings.Save();
                 SelectedTargetIndex = customIndex;
                 OnPropertyChanged(nameof(IsTargetCustom));
             }
@@ -1136,9 +1133,13 @@ public partial class MainViewModel : ObservableObject
                 ? TargetVersions[SelectedTargetIndex]
                 : "Unknown";
 
-        var headerLines = new List<string> { $"Source:   {sourceName}", $"Target:   {targetName}" };
-        headerLines.Add($"File:     {(isDisplayAll ? "All Files" : $"{prefix}.txt")}");
-        headerLines.Add($"Summary:  {panelName}");
+        List<string> headerLines =
+        [
+            $"Source:   {sourceName}",
+            $"Target:   {targetName}",
+            $"File:     {(isDisplayAll ? "All Files" : $"{prefix}.txt")}",
+            $"Summary:  {panelName}",
+        ];
         if (IsSearchFiltered)
             headerLines.Add($"Search:   {_activeSearchTerm}");
         headerLines.Add(new string('-', 40));
@@ -1168,9 +1169,9 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(sourceFolder) && Directory.Exists(sourceFolder))
         {
             // Treat as custom source folder
-            _settings.CustomSourcePath = sourceFolder;
-            _settings.SelectedSource = AppSettings.CustomSelection;
-            _settings.Save();
+            Settings.CustomSourcePath = sourceFolder;
+            Settings.SelectedSource = AppSettings.CustomSelection;
+            Settings.Save();
 
             if (SourceVersions.Count > customIndex)
                 SourceVersions[customIndex] = sourceFolder;
@@ -1182,9 +1183,9 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(targetFolder) && Directory.Exists(targetFolder))
         {
             // Treat as custom target folder
-            _settings.CustomTargetPath = targetFolder;
-            _settings.SelectedTarget = AppSettings.CustomSelection;
-            _settings.Save();
+            Settings.CustomTargetPath = targetFolder;
+            Settings.SelectedTarget = AppSettings.CustomSelection;
+            Settings.Save();
 
             if (TargetVersions.Count > customIndex)
                 TargetVersions[customIndex] = targetFolder;

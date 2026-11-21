@@ -66,7 +66,7 @@ public static class CsvParser
             while (data.ContainsKey(resolved))
                 resolved = $"{rawHeaders[i]} ({++suffix})";
 
-            columns[i] = new List<string>();
+            columns[i] = [];
             data[resolved] = columns[i];
         }
 

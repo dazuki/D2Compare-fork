@@ -85,8 +85,8 @@ public partial class MainWindow : Window
             width = Math.Min(width, area.Width / screen.Scaling);
             height = Math.Min(height, area.Height / screen.Scaling);
             Position = new PixelPoint(
-                area.X + (int)((area.Width - width * screen.Scaling) / 2),
-                area.Y + (int)((area.Height - height * screen.Scaling) / 2)
+                area.X + (int)((area.Width - (width * screen.Scaling)) / 2),
+                area.Y + (int)((area.Height - (height * screen.Scaling)) / 2)
             );
         }
         Width = width;

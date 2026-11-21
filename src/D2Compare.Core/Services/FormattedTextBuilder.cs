@@ -34,5 +34,5 @@ public static class FormattedTextBuilder
         SpanStyle style = SpanStyle.Normal
     ) => new(text, color, style);
 
-    private static FormattedLine Line(params FormattedSpan[] spans) => new(spans.ToList());
+    private static FormattedLine Line(params FormattedSpan[] spans) => new([.. spans]);
 }
